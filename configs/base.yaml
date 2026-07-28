@@ -1,0 +1,35 @@
+project:
+  name: geoai-aquaculture
+  seed: 20260728
+
+data:
+  train_path: data/raw/Train.csv
+  test_path: data/raw/Test.csv
+  sample_submission_path: data/raw/SampleSubmission.csv
+  id_column: ID
+  target_column: label
+  missing_sentinel: -9999.0
+  months: 12
+  radar_bands: [VH, VV]
+  optical_bands: [blue, green, nir, nira, re1, re2, re3, red, swir1, swir2]
+
+validation:
+  strategy: stratified_group_kfold
+  n_splits: 5
+  n_repeats: 3
+  fixed_threshold: 0.5
+  window_lengths: [4, 5, 6]
+  split_before_augmentation: true
+
+augmentation:
+  enabled: true
+  use_test_missingness_masks: true
+  exhaustive_windows: false
+  windows_per_sample: 8
+  optical_dropout_probability: 0.15
+
+reporting:
+  artifacts_dir: artifacts
+  save_oof: true
+  save_fold_metrics: true
+  save_environment_manifest: true
