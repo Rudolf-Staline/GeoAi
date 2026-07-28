@@ -19,9 +19,7 @@ def test_submission_has_exact_schema_and_threshold() -> None:
 
 def test_submission_rejects_wrong_id_order() -> None:
     submission = build_submission(["a", "b"], [0.1, 0.9])
-    sample = pd.DataFrame(
-        {"ID": ["b", "a"], "TargetF1": [0, 0], "TargetRAUC": [0.0, 0.0]}
-    )
+    sample = pd.DataFrame({"ID": ["b", "a"], "TargetF1": [0, 0], "TargetRAUC": [0.0, 0.0]})
 
     with pytest.raises(ValueError, match="row order"):
         validate_submission(submission, sample)

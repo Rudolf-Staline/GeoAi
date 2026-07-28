@@ -40,6 +40,19 @@ data/raw/SampleSubmission.csv
 data/raw/Trustworthiness_Evaluation.pdf
 ```
 
+## Phase 1 data audit
+
+Run the schema and missingness audit before any augmentation or model training:
+
+```bash
+python scripts/audit_data.py --config configs/base.yaml
+```
+
+The command validates all three competition CSV files, converts `-9999` to in-memory missing
+values, and writes deterministic JSON, CSV, and Markdown summaries under
+`artifacts/data_audit/`. Raw competition files are never modified, and generated artifacts remain
+excluded from Git.
+
 ## Repository map
 
 ```text
