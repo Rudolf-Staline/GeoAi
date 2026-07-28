@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.pyright/
+.coverage
+htmlcov/
+.venv/
+venv/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Competition data
+data/raw/*
+!data/raw/.gitkeep
+data/interim/*
+!data/interim/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+*.zip
+*.7z
+*.parquet
+
+# Generated artifacts
+artifacts/*
+!artifacts/README.md
+!artifacts/.gitkeep
+models/
+checkpoints/
+wandb/
+mlruns/
+
+# Notebook noise
+.ipynb_checkpoints/
