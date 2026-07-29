@@ -53,6 +53,21 @@ values, and writes deterministic JSON, CSV, and Markdown summaries under
 `artifacts/data_audit/`. Raw competition files are never modified, and generated artifacts remain
 excluded from Git.
 
+## Phase 2 temporal windows
+
+Generate the configured deterministic sampled views and metadata audit after assigning folds to
+the original rows:
+
+```bash
+python scripts/generate_windows.py --config configs/base.yaml
+```
+
+Use `--mode exhaustive` to generate all 24 consecutive windows per original row. The default
+sampled mode draws only boolean availability templates derived from test missingness; test feature
+values are never copied. Manifests and summaries are written under
+`artifacts/temporal_windows/`, while raw window values remain in memory and generated artifacts
+remain excluded from Git.
+
 ## Repository map
 
 ```text

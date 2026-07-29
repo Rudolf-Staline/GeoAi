@@ -4,12 +4,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import numpy as np
 import yaml
 
 from geoai_aquaculture.constants import (
+    FIXED_THRESHOLD,
     ID_COLUMN,
     MISSING_SENTINEL,
     OPTICAL_BANDS,
@@ -44,6 +45,38 @@ class DataConfig:
 
 
 @dataclass(frozen=True, slots=True)
+class ValidationConfig:
+    """Original-row splitting settings shared by later validation phases."""
+
+    strategy: str = "stratified_group_kfold"
+    n_splits: int = 5
+    n_repeats: int = 3
+    fixed_threshold: float = FIXED_THRESHOLD
+    window_lengths: tuple[int, ...] = (4, 5, 6)
+    split_before_augmentation: bool = True
+
+
+@dataclass(frozen=True, slots=True)
+class WindowGenerationConfig:
+    """Configuration for exhaustive or sampled temporal views."""
+
+    enabled: bool = False
+    use_test_missingness_masks: bool = False
+    exhaustive_windows: bool = False
+    windows_per_sample: int = 8
+    temporal_dropout_enabled: bool = False
+    temporal_dropout_probability: float = 0.0
+    optical_dropout_enabled: bool = False
+    optical_dropout_probability: float = 0.0
+
+    @property
+    def mode(self) -> Literal["exhaustive", "sampled"]:
+        """Return the configured generation mode."""
+
+        return "exhaustive" if self.exhaustive_windows else "sampled"
+
+
+@dataclass(frozen=True, slots=True)
 class ProjectConfig:
     """Phase-independent project settings needed by the data audit."""
 
@@ -52,6 +85,8 @@ class ProjectConfig:
     project_name: str
     seed: int
     data: DataConfig
+    validation: ValidationConfig
+    augmentation: WindowGenerationConfig
     artifacts_dir: Path
 
 
@@ -67,6 +102,11 @@ def _required(mapping: dict[str, Any], key: str, section: str) -> Any:
     return mapping[key]
 
 
+def _optional_mapping(mapping: dict[str, Any], key: str) -> dict[str, Any]:
+    value = mapping.get(key, {})
+    return _mapping(value, key)
+
+
 def _string(value: object, key: str) -> str:
     if not isinstance(value, str) or not value.strip():
         raise ConfigError(f"configuration key '{key}' must be a non-empty string")
@@ -79,6 +119,38 @@ def _string_tuple(value: object, key: str) -> tuple[str, ...]:
     result = tuple(_string(item, key) for item in value)
     if len(result) != len(set(result)):
         raise ConfigError(f"configuration key '{key}' contains duplicate bands")
+    return result
+
+
+def _boolean(value: object, key: str) -> bool:
+    if not isinstance(value, bool):
+        raise ConfigError(f"configuration key '{key}' must be boolean")
+    return value
+
+
+def _positive_integer(value: object, key: str, minimum: int = 1) -> int:
+    if not isinstance(value, int) or isinstance(value, bool) or value < minimum:
+        raise ConfigError(f"configuration key '{key}' must be an integer >= {minimum}")
+    return value
+
+
+def _probability(value: object, key: str) -> float:
+    if not isinstance(value, int | float) or isinstance(value, bool):
+        raise ConfigError(f"configuration key '{key}' must be numeric")
+    result = float(value)
+    if not np.isfinite(result) or not 0.0 <= result <= 1.0:
+        raise ConfigError(f"configuration key '{key}' must be in [0, 1]")
+    return result
+
+
+def _window_lengths(value: object, key: str) -> tuple[int, ...]:
+    if not isinstance(value, list) or any(
+        not isinstance(item, int) or isinstance(item, bool) for item in value
+    ):
+        raise ConfigError(f"configuration key '{key}' must be a list of integers")
+    result = tuple(value)
+    if result != (4, 5, 6):
+        raise ConfigError(f"configuration key '{key}' must be exactly [4, 5, 6]")
     return result
 
 
@@ -113,6 +185,8 @@ def load_project_config(config_path: str | Path) -> ProjectConfig:
     root = _mapping(raw, "root")
     project = _mapping(_required(root, "project", "root"), "project")
     data = _mapping(_required(root, "data", "root"), "data")
+    validation = _optional_mapping(root, "validation")
+    augmentation = _optional_mapping(root, "augmentation")
     reporting = _mapping(_required(root, "reporting", "root"), "reporting")
     project_root = _find_project_root(source_path)
 
@@ -167,11 +241,76 @@ def load_project_config(config_path: str | Path) -> ProjectConfig:
         project_root,
     )
 
+    validation_config = ValidationConfig(
+        strategy=_string(
+            validation.get("strategy", "stratified_group_kfold"),
+            "validation.strategy",
+        ),
+        n_splits=_positive_integer(validation.get("n_splits", 5), "validation.n_splits", minimum=2),
+        n_repeats=_positive_integer(validation.get("n_repeats", 3), "validation.n_repeats"),
+        fixed_threshold=_probability(
+            validation.get("fixed_threshold", FIXED_THRESHOLD),
+            "validation.fixed_threshold",
+        ),
+        window_lengths=_window_lengths(
+            validation.get("window_lengths", [4, 5, 6]),
+            "validation.window_lengths",
+        ),
+        split_before_augmentation=_boolean(
+            validation.get("split_before_augmentation", True),
+            "validation.split_before_augmentation",
+        ),
+    )
+    if validation_config.strategy != "stratified_group_kfold":
+        raise ConfigError("validation.strategy must be 'stratified_group_kfold'")
+    if validation_config.fixed_threshold != FIXED_THRESHOLD:
+        raise ConfigError(f"validation.fixed_threshold must remain {FIXED_THRESHOLD}")
+    if not validation_config.split_before_augmentation:
+        raise ConfigError("validation.split_before_augmentation must remain true")
+
+    window_config = WindowGenerationConfig(
+        enabled=_boolean(augmentation.get("enabled", False), "augmentation.enabled"),
+        use_test_missingness_masks=_boolean(
+            augmentation.get("use_test_missingness_masks", False),
+            "augmentation.use_test_missingness_masks",
+        ),
+        exhaustive_windows=_boolean(
+            augmentation.get("exhaustive_windows", False),
+            "augmentation.exhaustive_windows",
+        ),
+        windows_per_sample=_positive_integer(
+            augmentation.get("windows_per_sample", 8),
+            "augmentation.windows_per_sample",
+        ),
+        temporal_dropout_enabled=_boolean(
+            augmentation.get("temporal_dropout_enabled", False),
+            "augmentation.temporal_dropout_enabled",
+        ),
+        temporal_dropout_probability=_probability(
+            augmentation.get("temporal_dropout_probability", 0.0),
+            "augmentation.temporal_dropout_probability",
+        ),
+        optical_dropout_enabled=_boolean(
+            augmentation.get("optical_dropout_enabled", False),
+            "augmentation.optical_dropout_enabled",
+        ),
+        optical_dropout_probability=_probability(
+            augmentation.get("optical_dropout_probability", 0.0),
+            "augmentation.optical_dropout_probability",
+        ),
+    )
+    if window_config.exhaustive_windows and window_config.use_test_missingness_masks:
+        raise ConfigError(
+            "test missingness masks are sampled views and cannot be combined with exhaustive mode"
+        )
+
     return ProjectConfig(
         source_path=source_path,
         project_root=project_root,
         project_name=_string(_required(project, "name", "project"), "project.name"),
         seed=seed,
         data=data_config,
+        validation=validation_config,
+        augmentation=window_config,
         artifacts_dir=artifacts_root,
     )

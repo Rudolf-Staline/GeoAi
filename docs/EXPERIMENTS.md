@@ -45,3 +45,51 @@ Known limitation: Phase 1 validates structure, finiteness, missingness, and alig
 impose undocumented physical value ranges. No `configs/base.yaml` change was required. The exact
 next task unblocked is Phase 2, leakage-safe temporal window generation from original-row fold
 assignments and explicit test-derived availability masks.
+
+## phase-02-temporal-windows — accepted
+
+| Field | Result |
+|---|---|
+| Hypothesis | Assigning folds to original rows before augmentation and sampling only test availability booleans can reproduce test-like temporal missingness without feature-value or fold leakage. |
+| Representation | Raw 4–6 month views with separate calendar months, relative positions, padding, radar masks, per-band optical masks, and stable window IDs. |
+| Model and parameters | None. Five original-row stratified grouped folds; seed `20260728`; eight sampled views per original; test-mask sampling enabled; temporal and optical dropout disabled. |
+| Validation setup | Synthetic exhaustive-count, edge-month, mask fidelity, test-value perturbation, per-band optical-gap, input immutability, reproducibility, malformed-mask, and intentional cross-fold leakage tests. |
+| F1 / ROC-AUC / combined score | Not applicable; Phase 2 trains no model. |
+| Runtime | Sampled audit: 29.191 seconds inside the command, 31.07 seconds wall time, 286,680 KiB peak RSS. Exhaustive audit: 15.691 seconds inside, 17.72 seconds wall time, 448,904 KiB peak RSS. |
+| Artifacts | `artifacts/temporal_windows/window_summary.json`, fold/window manifests, deduplicated mask templates, distributions, and report. Raw window feature values are not persisted. |
+| Decision | Accept. Fold leakage is structurally rejected, same-seed output is identical, alternate seeds change sampled view content without changing folds, and Phase 1 remains unchanged. |
+
+### Findings
+
+- Exhaustive generation produces 24 views per original row: 9 starts for length 4, 8 for length
+  5, and 7 for length 6. Across 1,821 rows this is 43,704 views: 16,389 / 14,568 /
+  12,747 by length. Every valid start contributes exactly 1,821 exhaustive views.
+- The configured sampled run produces 14,568 views, exactly 8 per original. Counts by length are
+  4,801 / 4,929 / 4,838 for lengths 4 / 5 / 6.
+- Sampled start counts are length 4 months 1–9: `518, 513, 539, 540, 523, 545, 546, 535,
+  542`; length 5 months 1–8: `604, 625, 633, 574, 653, 608, 641, 591`; and length 6
+  months 1–7: `659, 706, 660, 687, 706, 689, 731`.
+- The test set yields 78 deduplicated boolean availability patterns representing all 1,030 test
+  rows. All 78 appear in the sampled train views, weighted by their test frequencies; no test ID
+  or feature value is stored in a mask template.
+- No original ID crosses folds, window IDs are unique, fixed-seed generation is identical, and
+  seed `20260729` changes sampled view content while preserving the original fold manifest.
+
+### Commands
+
+```bash
+python scripts/audit_data.py --config configs/base.yaml
+python scripts/generate_windows.py --config configs/base.yaml
+python scripts/generate_windows.py --config configs/base.yaml --mode exhaustive
+pytest tests -k "window or leakage or mask"
+python -m compileall src tests
+pytest
+ruff check .
+ruff format --check .
+```
+
+Known limitations: sampling is with replacement, so one original row may receive semantically
+duplicate views with distinct stable view indices; the fixed folds are a Phase 2 integrity
+manifest rather than the repeated validation protocol planned for Phase 4; and optional dropout
+paths are tested but disabled pending ablation evidence. The exact next task unblocked is Phase 3,
+physics-informed feature engineering over these raw values and explicit masks.

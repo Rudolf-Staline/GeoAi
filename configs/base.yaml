@@ -26,6 +26,9 @@ augmentation:
   use_test_missingness_masks: true
   exhaustive_windows: false
   windows_per_sample: 8
+  temporal_dropout_enabled: false
+  temporal_dropout_probability: 0.0
+  optical_dropout_enabled: false
   optical_dropout_probability: 0.15
 
 reporting:

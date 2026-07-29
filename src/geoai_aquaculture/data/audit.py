@@ -77,7 +77,11 @@ def _sensor_month_masks(
     return pd.DataFrame(all_valid), pd.DataFrame(any_valid)
 
 
-def _availability(frame: pd.DataFrame, data: CompetitionData) -> dict[str, pd.DataFrame]:
+def sensor_month_availability(
+    frame: pd.DataFrame, data: CompetitionData
+) -> dict[str, pd.DataFrame]:
+    """Return Phase 1 all-band and any-band sensor availability by calendar month."""
+
     lookup = {(item.band, item.month): item.name for item in data.temporal_columns}
     radar_all, radar_any = _sensor_month_masks(
         frame, data.config.data.radar_bands, data.config.data.months, lookup
@@ -115,7 +119,7 @@ def _missingness_tables(data: CompetitionData) -> dict[str, pd.DataFrame]:
     row_frames: list[pd.DataFrame] = []
 
     for dataset, frame in (("train", data.train), ("test", data.test)):
-        availability = _availability(frame, data)
+        availability = sensor_month_availability(frame, data)
         for sensor, bands in (
             ("radar", config.radar_bands),
             ("optical", config.optical_bands),
@@ -196,7 +200,7 @@ def _missingness_tables(data: CompetitionData) -> dict[str, pd.DataFrame]:
 
 def _test_windows(data: CompetitionData) -> tuple[pd.DataFrame, dict[str, pd.DataFrame]]:
     config = data.config.data
-    availability = _availability(data.test, data)
+    availability = sensor_month_availability(data.test, data)
     radar = availability["radar_all"]
     optical = availability["optical_all"]
     radar_array = radar.to_numpy(dtype=bool)
