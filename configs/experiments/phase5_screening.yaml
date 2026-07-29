@@ -1,0 +1,11 @@
+experiments:
+  - configs/experiments/screen_cb_shallow.yaml
+  - configs/experiments/screen_cb_medium.yaml
+  - configs/experiments/screen_cb_low_lr.yaml
+  - configs/experiments/screen_cb_class_weighted.yaml
+  - configs/experiments/screen_cb_uniform.yaml
+  - configs/experiments/screen_lgb_conservative.yaml
+  - configs/experiments/screen_lgb_constrained.yaml
+  - configs/experiments/screen_lgb_regularized.yaml
+  - configs/experiments/screen_lgb_class_weighted.yaml
+  - configs/experiments/screen_lgb_uniform.yaml

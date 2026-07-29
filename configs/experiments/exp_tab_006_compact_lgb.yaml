@@ -1,0 +1,29 @@
+experiment:
+  id: EXP-TAB-006-LGB-COMPACT
+  hypothesis: A manually selected physical subset may improve robustness by removing redundant chronology and aggregate channels.
+  feature_set: compact
+  weighting: equal_original
+  seed: 4100
+  early_stopping_rounds: 70
+  smoke_iteration_limit: 20
+  permutation_feature_count: 10
+  allowed_stages: [screen, full]
+  threshold: 0.5
+  notes: Exact registry-backed 101-feature set; no labels or model importance were used for selection.
+  model:
+    family: lightgbm
+    name: constrained_depth
+    hypothesis: The constrained profile tests whether physically selected channels generalize with less redundancy.
+    parameters:
+      objective: binary
+      n_estimators: 700
+      learning_rate: 0.03
+      num_leaves: 31
+      max_depth: 5
+      min_child_samples: 40
+      colsample_bytree: 0.85
+      subsample: 0.90
+      subsample_freq: 1
+      reg_alpha: 0.3
+      reg_lambda: 3.0
+      max_bin: 127

@@ -28,6 +28,7 @@ from geoai_aquaculture.features import (
     build_feature_representations,
     build_monthly_features,
     safe_divide,
+    select_tabular_features,
 )
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -325,6 +326,52 @@ def test_representations_preserve_masks_metadata_schema_and_folds() -> None:
     np.testing.assert_allclose(windows.values, values_before, equal_nan=True)
     np.testing.assert_array_equal(windows.optical_mask, optical_before)
     pd.testing.assert_frame_equal(windows.manifest, manifest_before)
+
+
+def test_phase5_registry_backed_feature_sets_are_exact_and_label_free() -> None:
+    matrix = build_feature_representations(_feature_windows(), FeatureConfig())[0]
+    selections = {
+        name: select_tabular_features(matrix, name, FeatureConfig().bands)
+        for name in ("relative", "invariant", "full", "radar", "optical", "compact")
+    }
+
+    assert {name: len(selection.feature_names) for name, selection in selections.items()} == {
+        "relative": 238,
+        "invariant": 496,
+        "full": 688,
+        "radar": 186,
+        "optical": 515,
+        "compact": 101,
+    }
+    assert selections["relative"].feature_names[:192] == matrix.feature_names[:192]
+    assert not any(
+        definition.feature_kind == "aggregate"
+        for definition in selections["relative"].registry.definitions
+    )
+    assert not any(
+        definition.feature_kind == "monthly"
+        for definition in selections["invariant"].registry.definitions
+    )
+    radar_bands = {"VV", "VH"}
+    optical_bands = set(OPTICAL_BANDS)
+    for definition in selections["radar"].registry.definitions:
+        if definition.feature_group != "metadata_window" and definition.source_bands:
+            assert set(definition.source_bands).issubset(radar_bands)
+    for definition in selections["optical"].registry.definitions:
+        if definition.feature_group != "metadata_window" and definition.source_bands:
+            assert set(definition.source_bands).issubset(optical_bands)
+    compact = selections["compact"]
+    assert "optical__ndwi__median" in compact.feature_names
+    assert "optical__mndwi__slope" in compact.feature_names
+    assert "radar__vv_minus_vh__amplitude" in compact.feature_names
+    assert "metadata__optical_gap_count" in compact.feature_names
+    assert "optical__blue__mean" not in compact.feature_names
+    assert not any(
+        {"id", "original_id", "window_id", "fold", "label", "target"}
+        & {token.casefold() for token in name.split("__")}
+        for selection in selections.values()
+        for name in selection.feature_names
+    )
 
 
 def test_train_test_representations_align_without_labels_as_features() -> None:

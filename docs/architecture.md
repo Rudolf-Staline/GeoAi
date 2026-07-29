@@ -72,3 +72,29 @@ Leave-season-out selections preserve the outer original-row split. Cluster diagn
 label-free invariant aggregates and fold-local scaling/clustering. Test-like adversarial holdouts
 accept only complete OOF domain scores. The latter two interfaces are prepared in Phase 4, but
 their scientifically meaningful execution is deferred to model evaluation and domain diagnosis.
+
+## Phase 5 tabular boundary
+
+`select_tabular_features` consumes `FeatureMatrix` plus the Phase 3 registry and returns an exact,
+ordered `SelectedFeatureMatrix`. Six declarations are supported: relative (238), invariant (496),
+full (688), radar (186), optical (515), and compact physical (101). Sensor experts use source-band
+and feature-group provenance; the compact set expands an exact declared channel/statistic list.
+No selector reads labels, feature values, or loose substrings.
+
+`TabularModelAdapter` defines fit, probability, native serialization, restore, and feature-
+importance behavior. `CatBoostAdapter` and `LightGBMAdapter` add deterministic CPU settings and
+native missing-value handling without owning folds or metrics. The model-independent fold runner
+loads the authoritative manifests, derives current-fold sample weights, fits/early-stops within
+that split, emits window probabilities, and delegates original aggregation and stress reporting
+back to Phase 4.
+
+Each completed experiment directory has a compatibility manifest plus resolved configuration,
+schema and feature list, original/window OOF, fold/repeat/slice metrics, model checksums,
+importance stability, bounded permutation diagnostics, and runtime metadata. Model binaries live
+only below ignored artifacts. Candidate registries accept only complete full-stage runs with the
+authoritative fold/window fingerprints and 5,463-row OOF contract.
+
+The diversity layer aligns candidate OOF one-to-one and reports correlations, disagreement,
+unique errors, slice overlap, and fixed 50/50 diagnostic blends. Mean aggregation linearity is
+used to cache stress views without changing Phase 4 metric formulas. It never optimizes ensemble
+weights; calibrated or optimized combination remains a Phase 8 responsibility.

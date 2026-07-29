@@ -117,6 +117,43 @@ under `artifacts/validation/` and remain ignored by Git. The logistic reference 
 prove fold-local preprocessing, prediction aggregation, OOF storage, and reporting end to end; it
 is not a Phase 5 competition baseline.
 
+## Phase 5 tabular baselines
+
+Install the already declared tree-model extra, then run one hand-authored experiment at the
+requested stage:
+
+```bash
+pip install -e ".[dev,trees]"
+python scripts/train_tabular.py \
+  --config configs/base.yaml \
+  --experiment configs/experiments/exp_tab_002_invariant_lgb.yaml \
+  --stage full
+```
+
+`smoke` fits one small fold, `screen` uses repeat 0 across all five folds, and `full` is the only
+selection-eligible mode (all 15 repeat/fold combinations). The CLI loads the immutable Phase 4
+fold and validation-window manifests, builds Phase 3 features, applies registry-backed feature
+selection, fits only on current-fold windows, and averages fixed validation-window probabilities
+to one OOF probability per original/repeat. A complete full run must contain exactly 5,463
+original OOF rows.
+
+Run only explicit lists when reproducing the full Phase 5 study:
+
+```bash
+python scripts/train_tabular.py --config configs/base.yaml \
+  --approved-list configs/experiments/phase5_representation_screening.yaml --stage screen
+python scripts/train_tabular.py --config configs/base.yaml \
+  --approved-list configs/experiments/phase5_full_confirmations.yaml --stage full
+python scripts/train_tabular.py --config configs/base.yaml \
+  --diversity-registry configs/experiments/phase5_all_stage_c_candidates.yaml
+```
+
+Use `--resume` only when the completed artifact has identical configuration, Git state, and
+scientific fingerprints; use `--overwrite` to explicitly replace one ignored generated run.
+Artifacts are written under `artifacts/experiments/<experiment_id>/` and remain excluded from
+Git. No test predictions, calibration, threshold tuning, or final submission are produced in
+Phase 5.
+
 ## Repository map
 
 ```text

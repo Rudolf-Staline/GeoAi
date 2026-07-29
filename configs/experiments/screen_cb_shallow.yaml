@@ -1,0 +1,27 @@
+experiment:
+  id: SCR-TAB-CB-SHALLOW
+  hypothesis: A shallow strongly regularized CatBoost should resist overfitting the small original-row sample.
+  feature_set: full
+  weighting: equal_original
+  seed: 3101
+  early_stopping_rounds: 60
+  smoke_iteration_limit: 20
+  permutation_feature_count: 0
+  allowed_stages: [smoke, screen]
+  threshold: 0.5
+  notes: Predeclared Stage B profile screen; never selection-eligible without a separate Stage C config.
+  model:
+    family: catboost
+    name: shallow_regularized
+    hypothesis: Depth four, stronger L2 and stochastic regularization should lower fold variance.
+    parameters:
+      iterations: 450
+      learning_rate: 0.05
+      depth: 4
+      l2_leaf_reg: 12.0
+      random_strength: 1.0
+      rsm: 0.80
+      bootstrap_type: Bayesian
+      bagging_temperature: 1.0
+      loss_function: Logloss
+      eval_metric: Logloss

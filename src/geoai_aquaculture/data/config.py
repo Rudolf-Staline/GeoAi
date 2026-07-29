@@ -18,6 +18,14 @@ from geoai_aquaculture.constants import (
     TARGET_COLUMN,
 )
 
+AUTHORITATIVE_FOLD_FINGERPRINT = "4dbc9029f242c5ff4f8d2e23b0fb0d83334d993c1a4ecd7ce95e8e18c37ceece"
+AUTHORITATIVE_VALIDATION_WINDOW_FINGERPRINT = (
+    "89ef5e9a108a4cad09582db82ce1970dbf4873cbb3b01692c96a8fcc54b14492"
+)
+AUTHORITATIVE_TABULAR_SCHEMA_FINGERPRINT = (
+    "af93d8bfc1406583e1834519fb5012b97052446e44674fbb8a0cf917bc9032b9"
+)
+
 
 class ConfigError(ValueError):
     """Raised when an experiment configuration violates the data contract."""
@@ -247,6 +255,50 @@ class FeatureConfig:
 
 
 @dataclass(frozen=True, slots=True)
+class TabularRuntimeConfig:
+    """Immutable Phase 5 artifact locations and scientific fingerprints."""
+
+    validation_artifacts_dir: Path
+    experiments_artifacts_dir: Path
+    fold_manifest_fingerprint: str = AUTHORITATIVE_FOLD_FINGERPRINT
+    validation_window_fingerprint: str = AUTHORITATIVE_VALIDATION_WINDOW_FINGERPRINT
+    feature_schema_fingerprint: str = AUTHORITATIVE_TABULAR_SCHEMA_FINGERPRINT
+    expected_original_count: int = 1821
+    expected_repeat_count: int = 3
+    expected_full_oof_rows: int = 5463
+    expected_feature_count: int = 688
+    permutation_feature_count: int = 10
+    cpu_threads: int = 1
+
+    def __post_init__(self) -> None:
+        for name, value in (
+            ("fold_manifest_fingerprint", self.fold_manifest_fingerprint),
+            ("validation_window_fingerprint", self.validation_window_fingerprint),
+            ("feature_schema_fingerprint", self.feature_schema_fingerprint),
+        ):
+            if len(value) != 64 or any(character not in "0123456789abcdef" for character in value):
+                raise ConfigError(f"tabular.{name} must be a lowercase SHA-256 fingerprint")
+        for name, value in (
+            ("expected_original_count", self.expected_original_count),
+            ("expected_repeat_count", self.expected_repeat_count),
+            ("expected_full_oof_rows", self.expected_full_oof_rows),
+            ("expected_feature_count", self.expected_feature_count),
+        ):
+            if value < 1:
+                raise ConfigError(f"tabular.{name} must be positive")
+        if self.expected_full_oof_rows != (
+            self.expected_original_count * self.expected_repeat_count
+        ):
+            raise ConfigError(
+                "tabular.expected_full_oof_rows must equal repeats times original count"
+            )
+        if self.permutation_feature_count < 0:
+            raise ConfigError("tabular.permutation_feature_count must be non-negative")
+        if self.cpu_threads < 1:
+            raise ConfigError("tabular.cpu_threads must be positive")
+
+
+@dataclass(frozen=True, slots=True)
 class ProjectConfig:
     """Phase-independent project settings needed by the data audit."""
 
@@ -258,6 +310,7 @@ class ProjectConfig:
     validation: ValidationConfig
     augmentation: WindowGenerationConfig
     features: FeatureConfig
+    tabular: TabularRuntimeConfig
     artifacts_dir: Path
 
 
@@ -397,6 +450,7 @@ def load_project_config(config_path: str | Path) -> ProjectConfig:
     validation = _optional_mapping(root, "validation")
     augmentation = _optional_mapping(root, "augmentation")
     features = _optional_mapping(root, "features")
+    tabular = _optional_mapping(root, "tabular")
     reporting = _mapping(_required(root, "reporting", "root"), "reporting")
     project_root = _find_project_root(source_path)
 
@@ -644,6 +698,61 @@ def load_project_config(config_path: str | Path) -> ProjectConfig:
         epsilon=_positive_float(features.get("epsilon", 1e-6), "features.epsilon"),
         bands=semantic_mapping,
     )
+    tabular_config = TabularRuntimeConfig(
+        validation_artifacts_dir=_resolve_path(
+            tabular.get("validation_artifacts_dir", "artifacts/validation"),
+            "tabular.validation_artifacts_dir",
+            project_root,
+        ),
+        experiments_artifacts_dir=_resolve_path(
+            tabular.get("experiments_artifacts_dir", "artifacts/experiments"),
+            "tabular.experiments_artifacts_dir",
+            project_root,
+        ),
+        fold_manifest_fingerprint=_string(
+            tabular.get("fold_manifest_fingerprint", AUTHORITATIVE_FOLD_FINGERPRINT),
+            "tabular.fold_manifest_fingerprint",
+        ),
+        validation_window_fingerprint=_string(
+            tabular.get(
+                "validation_window_fingerprint",
+                AUTHORITATIVE_VALIDATION_WINDOW_FINGERPRINT,
+            ),
+            "tabular.validation_window_fingerprint",
+        ),
+        feature_schema_fingerprint=_string(
+            tabular.get(
+                "feature_schema_fingerprint",
+                AUTHORITATIVE_TABULAR_SCHEMA_FINGERPRINT,
+            ),
+            "tabular.feature_schema_fingerprint",
+        ),
+        expected_original_count=_positive_integer(
+            tabular.get("expected_original_count", 1821),
+            "tabular.expected_original_count",
+        ),
+        expected_repeat_count=_positive_integer(
+            tabular.get("expected_repeat_count", 3),
+            "tabular.expected_repeat_count",
+        ),
+        expected_full_oof_rows=_positive_integer(
+            tabular.get("expected_full_oof_rows", 5463),
+            "tabular.expected_full_oof_rows",
+        ),
+        expected_feature_count=_positive_integer(
+            tabular.get("expected_feature_count", 688),
+            "tabular.expected_feature_count",
+        ),
+        permutation_feature_count=_positive_integer(
+            tabular.get("permutation_feature_count", 10),
+            "tabular.permutation_feature_count",
+            minimum=0,
+        ),
+        cpu_threads=_positive_integer(
+            tabular.get("cpu_threads", 1),
+            "tabular.cpu_threads",
+        ),
+    )
 
     return ProjectConfig(
         source_path=source_path,
@@ -654,5 +763,6 @@ def load_project_config(config_path: str | Path) -> ProjectConfig:
         validation=validation_config,
         augmentation=window_config,
         features=feature_config,
+        tabular=tabular_config,
         artifacts_dir=artifacts_root,
     )

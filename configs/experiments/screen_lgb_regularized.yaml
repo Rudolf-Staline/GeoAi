@@ -1,0 +1,29 @@
+experiment:
+  id: SCR-TAB-LGB-REGULARIZED
+  hypothesis: Stronger L1/L2 penalties may retain ranking while reducing unstable feature reliance.
+  feature_set: full
+  weighting: equal_original
+  seed: 3203
+  early_stopping_rounds: 80
+  smoke_iteration_limit: 20
+  permutation_feature_count: 0
+  allowed_stages: [smoke, screen]
+  threshold: 0.5
+  notes: Predeclared Stage B profile screen.
+  model:
+    family: lightgbm
+    name: stronger_regularization
+    hypothesis: Higher penalties and column subsampling should spread importance across physical signals.
+    parameters:
+      objective: binary
+      n_estimators: 850
+      learning_rate: 0.03
+      num_leaves: 31
+      max_depth: -1
+      min_child_samples: 50
+      colsample_bytree: 0.75
+      subsample: 0.90
+      subsample_freq: 1
+      reg_alpha: 1.0
+      reg_lambda: 8.0
+      max_bin: 127

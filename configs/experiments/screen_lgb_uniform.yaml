@@ -1,0 +1,29 @@
+experiment:
+  id: SCR-TAB-LGB-UNIFORM
+  hypothesis: Uniform weighting tests LightGBM's sensitivity to the absolute sample-weight scale.
+  feature_set: full
+  weighting: uniform
+  seed: 3201
+  early_stopping_rounds: 60
+  smoke_iteration_limit: 20
+  permutation_feature_count: 0
+  allowed_stages: [screen]
+  threshold: 0.5
+  notes: Relative original contributions are unchanged because every original has eight fixed windows.
+  model:
+    family: lightgbm
+    name: conservative_uniform_ablation
+    hypothesis: Holding tree parameters fixed isolates absolute weighting scale effects.
+    parameters:
+      objective: binary
+      n_estimators: 650
+      learning_rate: 0.035
+      num_leaves: 15
+      max_depth: -1
+      min_child_samples: 60
+      colsample_bytree: 0.80
+      subsample: 0.90
+      subsample_freq: 1
+      reg_alpha: 0.2
+      reg_lambda: 3.0
+      max_bin: 127

@@ -1,0 +1,29 @@
+experiment:
+  id: EXP-TAB-004-LGB-RADAR
+  hypothesis: A radar expert should remain useful when optical observations contain clouds or internal gaps.
+  feature_set: radar
+  weighting: equal_original
+  seed: 4100
+  early_stopping_rounds: 70
+  smoke_iteration_limit: 20
+  permutation_feature_count: 10
+  allowed_stages: [screen, full]
+  threshold: 0.5
+  notes: Registry-selected radar channels/interactions/aggregates, radar validity and neutral window metadata only.
+  model:
+    family: lightgbm
+    name: constrained_depth
+    hypothesis: Constrained interactions should form a stable sensor-specific expert from the 186 radar feature set.
+    parameters:
+      objective: binary
+      n_estimators: 700
+      learning_rate: 0.03
+      num_leaves: 31
+      max_depth: 5
+      min_child_samples: 40
+      colsample_bytree: 0.85
+      subsample: 0.90
+      subsample_freq: 1
+      reg_alpha: 0.3
+      reg_lambda: 3.0
+      max_bin: 127

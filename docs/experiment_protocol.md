@@ -75,6 +75,37 @@ components fail the report. This criterion is configuration-backed and must not 
 model experiments. It is a conservative local selection diagnostic, not the official Zindi
 metric.
 
+## Phase 5 tree-run contract
+
+CatBoost and LightGBM share one model-agnostic runner. Feature families are selected from the
+Phase 3 registry and provenance; IDs, labels, folds, domains, and window IDs cannot enter the
+model matrix. Both families receive native missing values. No fitted global imputer, scaler, or
+feature selector exists in the Phase 5 path.
+
+The default training weight for a window is `1 / number_of_windows_for_original`, computed from
+the current fold's training rows. Optional balanced class weights are calculated from
+de-duplicated training originals in that fold only. Validation weights can equalize originals but
+never use validation class prevalence. Uniform weighting is an explicit ablation; on the fixed
+eight-view panel it preserves equal relative contribution across originals while changing the
+common loss scale.
+
+Experiments progress through immutable stages:
+
+- `smoke`: repeat 0/fold 0 with a small iteration cap; engineering evidence only;
+- `screen`: all five folds of repeat 0; rejects broken or clearly weak declared profiles;
+- `full`: all 5 folds x 3 repeats; the only selection-eligible result.
+
+Early stopping uses only the current validation fold. Every full run must emit 43,704 window
+predictions and exactly 5,463 original-level rows, one per `(original_id, repeat)`. Resume requires
+matching base/experiment configuration, Git provenance, fold fingerprint, validation-window
+fingerprint, full Phase 3 schema fingerprint, and selected-feature fingerprint. Completed output
+is never silently overwritten.
+
+Pairwise Phase 5 diversity uses aligned full OOF only. Pearson/Spearman probability correlation,
+residual correlation, disagreement, unique errors, and temporal-slice overlap are diagnostic.
+Equal 50/50 blends may demonstrate complementarity, but no ensemble weights are optimized until
+Phase 8.
+
 ## Metric
 
 For probabilities `p`:

@@ -1,0 +1,27 @@
+experiment:
+  id: SCR-TAB-CB-UNIFORM
+  hypothesis: Uniform window weighting tests whether absolute loss-weight scale affects the medium CatBoost profile.
+  feature_set: full
+  weighting: uniform
+  seed: 3102
+  early_stopping_rounds: 70
+  smoke_iteration_limit: 20
+  permutation_feature_count: 0
+  allowed_stages: [screen]
+  threshold: 0.5
+  notes: Every original currently has eight views, so relative contributions match equal-original weighting but total loss scale differs.
+  model:
+    family: catboost
+    name: medium_depth_uniform_ablation
+    hypothesis: Holding all model parameters fixed isolates the declared weighting policy.
+    parameters:
+      iterations: 650
+      learning_rate: 0.04
+      depth: 6
+      l2_leaf_reg: 8.0
+      random_strength: 0.5
+      rsm: 0.85
+      bootstrap_type: Bayesian
+      bagging_temperature: 0.5
+      loss_function: Logloss
+      eval_metric: Logloss

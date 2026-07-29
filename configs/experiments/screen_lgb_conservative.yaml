@@ -1,0 +1,29 @@
+experiment:
+  id: SCR-TAB-LGB-CONSERVATIVE
+  hypothesis: A small leaf count and large child minimum should provide a stable LightGBM baseline.
+  feature_set: full
+  weighting: equal_original
+  seed: 3201
+  early_stopping_rounds: 60
+  smoke_iteration_limit: 20
+  permutation_feature_count: 0
+  allowed_stages: [smoke, screen]
+  threshold: 0.5
+  notes: Predeclared Stage B profile screen.
+  model:
+    family: lightgbm
+    name: conservative_leaves
+    hypothesis: Fifteen leaves and a large minimum child count should constrain variance.
+    parameters:
+      objective: binary
+      n_estimators: 650
+      learning_rate: 0.035
+      num_leaves: 15
+      max_depth: -1
+      min_child_samples: 60
+      colsample_bytree: 0.80
+      subsample: 0.90
+      subsample_freq: 1
+      reg_alpha: 0.2
+      reg_lambda: 3.0
+      max_bin: 127

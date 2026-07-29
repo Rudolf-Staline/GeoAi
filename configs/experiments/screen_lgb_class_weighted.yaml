@@ -1,0 +1,29 @@
+experiment:
+  id: SCR-TAB-LGB-CLASSWT
+  hypothesis: Fold-local balanced class weights may improve fixed-threshold F1 for conservative LightGBM.
+  feature_set: full
+  weighting: equal_original_class_weighted
+  seed: 3204
+  early_stopping_rounds: 60
+  smoke_iteration_limit: 20
+  permutation_feature_count: 0
+  allowed_stages: [smoke, screen]
+  threshold: 0.5
+  notes: Class weights are derived only from each fold's training originals.
+  model:
+    family: lightgbm
+    name: conservative_class_weighted
+    hypothesis: Holding tree structure near the conservative profile isolates class weighting.
+    parameters:
+      objective: binary
+      n_estimators: 650
+      learning_rate: 0.035
+      num_leaves: 15
+      max_depth: -1
+      min_child_samples: 60
+      colsample_bytree: 0.80
+      subsample: 0.90
+      subsample_freq: 1
+      reg_alpha: 0.2
+      reg_lambda: 3.0
+      max_bin: 127

@@ -32,18 +32,27 @@ from .representations import (
     build_sequence_features,
     build_tabular_features,
 )
+from .selection import (
+    FEATURE_SET_HYPOTHESES,
+    FeatureSetName,
+    SelectedFeatureMatrix,
+    select_tabular_features,
+)
 
 __all__ = [
     "AGGREGATION_NAMES",
+    "FEATURE_SET_HYPOTHESES",
     "FeatureAudit",
     "FeatureDefinition",
     "FeatureEngineeringError",
     "FeatureMatrix",
     "FeatureRegistry",
     "FeatureRegistryError",
+    "FeatureSetName",
     "MonthlyChannelSpec",
     "MonthlyFeatureCollection",
     "SafeDivisionResult",
+    "SelectedFeatureMatrix",
     "SequenceFeatureDataset",
     "TemporalAggregateResult",
     "aggregate_temporal_series",
@@ -55,5 +64,6 @@ __all__ = [
     "build_tabular_features",
     "combine_feature_registries",
     "safe_divide",
+    "select_tabular_features",
     "write_feature_audit_artifacts",
 ]

@@ -8,6 +8,9 @@ from .audit import (
     write_audit_artifacts,
 )
 from .config import (
+    AUTHORITATIVE_FOLD_FINGERPRINT,
+    AUTHORITATIVE_TABULAR_SCHEMA_FINGERPRINT,
+    AUTHORITATIVE_VALIDATION_WINDOW_FINGERPRINT,
     BandSemanticMapping,
     ConfigError,
     DataConfig,
@@ -15,6 +18,7 @@ from .config import (
     ProjectConfig,
     RobustScoreWeights,
     SeasonDefinition,
+    TabularRuntimeConfig,
     ValidationConfig,
     WindowGenerationConfig,
     load_project_config,
@@ -60,6 +64,9 @@ from .windows import (
 )
 
 __all__ = [
+    "AUTHORITATIVE_FOLD_FINGERPRINT",
+    "AUTHORITATIVE_TABULAR_SCHEMA_FINGERPRINT",
+    "AUTHORITATIVE_VALIDATION_WINDOW_FINGERPRINT",
     "MAX_WINDOW_LENGTH",
     "BandSemanticMapping",
     "CompetitionData",
@@ -76,6 +83,7 @@ __all__ = [
     "RobustScoreWeights",
     "SchemaError",
     "SeasonDefinition",
+    "TabularRuntimeConfig",
     "TemporalColumn",
     "TemporalWindowDataset",
     "TemporalWindowError",

@@ -1,0 +1,29 @@
+experiment:
+  id: EXP-TAB-003-LGB-FULL-UNIFORM
+  hypothesis: Uniform scale may alter LightGBM regularization beneficially while preserving equal original contributions on the fixed eight-view panel.
+  feature_set: full
+  weighting: uniform
+  seed: 3201
+  early_stopping_rounds: 60
+  smoke_iteration_limit: 20
+  permutation_feature_count: 10
+  allowed_stages: [full]
+  threshold: 0.5
+  notes: Promoted weighting ablation; not the default policy and valid only because every original has eight views.
+  model:
+    family: lightgbm
+    name: conservative_uniform_ablation
+    hypothesis: The repeat-0 winner tests whether its robust gain persists across all repeats.
+    parameters:
+      objective: binary
+      n_estimators: 650
+      learning_rate: 0.035
+      num_leaves: 15
+      max_depth: -1
+      min_child_samples: 60
+      colsample_bytree: 0.80
+      subsample: 0.90
+      subsample_freq: 1
+      reg_alpha: 0.2
+      reg_lambda: 3.0
+      max_bin: 127

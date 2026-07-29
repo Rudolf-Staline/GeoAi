@@ -1,0 +1,27 @@
+experiment:
+  id: EXP-TAB-003-CB-FULL-LOWLR
+  hypothesis: Low-rate CatBoost may turn the full physical representation into smoother, temporally stable probabilities.
+  feature_set: full
+  weighting: equal_original
+  seed: 3103
+  early_stopping_rounds: 90
+  smoke_iteration_limit: 20
+  permutation_feature_count: 10
+  allowed_stages: [full]
+  threshold: 0.5
+  notes: Best repeat-0 CatBoost robust score; promoted unchanged to authoritative confirmation.
+  model:
+    family: catboost
+    name: lower_learning_rate
+    hypothesis: The repeat-0 leader must confirm its small robust gain across all three repeats.
+    parameters:
+      iterations: 950
+      learning_rate: 0.025
+      depth: 6
+      l2_leaf_reg: 10.0
+      random_strength: 0.5
+      rsm: 0.85
+      bootstrap_type: Bayesian
+      bagging_temperature: 0.5
+      loss_function: Logloss
+      eval_metric: Logloss

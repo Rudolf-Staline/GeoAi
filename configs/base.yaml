@@ -71,6 +71,19 @@ features:
     swir1: swir1
     swir2: swir2
 
+tabular:
+  validation_artifacts_dir: artifacts/validation
+  experiments_artifacts_dir: artifacts/experiments
+  fold_manifest_fingerprint: 4dbc9029f242c5ff4f8d2e23b0fb0d83334d993c1a4ecd7ce95e8e18c37ceece
+  validation_window_fingerprint: 89ef5e9a108a4cad09582db82ce1970dbf4873cbb3b01692c96a8fcc54b14492
+  feature_schema_fingerprint: af93d8bfc1406583e1834519fb5012b97052446e44674fbb8a0cf917bc9032b9
+  expected_original_count: 1821
+  expected_repeat_count: 3
+  expected_full_oof_rows: 5463
+  expected_feature_count: 688
+  permutation_feature_count: 10
+  cpu_threads: 4
+
 reporting:
   artifacts_dir: artifacts
   save_oof: true

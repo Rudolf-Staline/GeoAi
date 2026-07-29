@@ -1,0 +1,37 @@
+candidates:
+  - experiment_id: EXP-TAB-001-LGB-RELATIVE
+    artifact_dir: artifacts/experiments/EXP-TAB-001-LGB-RELATIVE
+    candidate_role: required_relative_representation
+    retention_reason: Included in the complete Stage C diversity audit; standalone score trails the leading candidates.
+  - experiment_id: EXP-TAB-002-LGB-INVARIANT
+    artifact_dir: artifacts/experiments/EXP-TAB-002-LGB-INVARIANT
+    candidate_role: strongest_equal_original_lightgbm
+    retention_reason: Strongest default-weight LightGBM robust result and best invariant aggregate candidate.
+  - experiment_id: EXP-TAB-003-LGB-FULL
+    artifact_dir: artifacts/experiments/EXP-TAB-003-LGB-FULL
+    candidate_role: full_equal_original_lightgbm
+    retention_reason: Complete fused representation included to measure redundancy against invariant and uniform candidates.
+  - experiment_id: EXP-TAB-003-LGB-FULL-UNIFORM
+    artifact_dir: artifacts/experiments/EXP-TAB-003-LGB-FULL-UNIFORM
+    candidate_role: strongest_lightgbm
+    retention_reason: Highest Stage C robust score; explicit common-weight-scale ablation on the equal-view panel.
+  - experiment_id: EXP-TAB-003-CB-FULL-LOWLR
+    artifact_dir: artifacts/experiments/EXP-TAB-003-CB-FULL-LOWLR
+    candidate_role: strongest_catboost
+    retention_reason: Strongest CatBoost confirmation; diversity must justify its higher runtime.
+  - experiment_id: EXP-TAB-003-CB-FULL-CLASSWT
+    artifact_dir: artifacts/experiments/EXP-TAB-003-CB-FULL-CLASSWT
+    candidate_role: rejected_class_weight_ablation
+    retention_reason: Included for complete pairwise audit; lower official and robust scores caused provisional rejection.
+  - experiment_id: EXP-TAB-004-LGB-RADAR
+    artifact_dir: artifacts/experiments/EXP-TAB-004-LGB-RADAR
+    candidate_role: radar_only_diagnostic
+    retention_reason: Included to quantify sensor-specific complementarity despite failing the standalone reference bar.
+  - experiment_id: EXP-TAB-005-LGB-OPTICAL
+    artifact_dir: artifacts/experiments/EXP-TAB-005-LGB-OPTICAL
+    candidate_role: strongest_optical_expert
+    retention_reason: Strong sensor-specific expert retained provisionally for error-diversity analysis.
+  - experiment_id: EXP-TAB-006-LGB-COMPACT
+    artifact_dir: artifacts/experiments/EXP-TAB-006-LGB-COMPACT
+    candidate_role: compact_physical_diagnostic
+    retention_reason: Included for the complete audit; simpler representation did not recover leading robustness.

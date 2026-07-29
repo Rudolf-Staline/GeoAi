@@ -1,1 +1,93 @@
 """Training loops, reproducibility and artifact persistence."""
+
+from .artifacts import (
+    ExperimentArtifactError,
+    assert_resume_compatible,
+    experiment_artifact_dir,
+    load_experiment_artifact_manifest,
+    prepare_experiment_artifact_dir,
+    summarize_feature_importance,
+    write_tabular_experiment_artifacts,
+)
+from .config import (
+    ExperimentConfigError,
+    ExperimentStage,
+    ModelFamily,
+    ModelProfile,
+    TabularExperimentConfig,
+    WeightingPolicy,
+    load_tabular_experiment_config,
+)
+from .diversity import (
+    AcceptedCandidateRegistry,
+    CandidateRecord,
+    DiversityError,
+    OOFDiversityReport,
+    analyze_oof_diversity,
+    load_accepted_candidate_registry,
+    load_candidate_oof,
+    write_oof_diversity_artifacts,
+)
+from .results import (
+    ExperimentArtifactManifest,
+    FoldTrainingResult,
+    TabularTrainingResult,
+)
+from .tabular import (
+    FoldRunOutput,
+    PreparedTabularData,
+    TabularTrainingError,
+    execute_tabular_experiment,
+    prepare_tabular_experiment_data,
+    run_tabular_experiment,
+    run_tabular_fold,
+    stage_repeat_folds,
+    validate_full_oof_contract,
+    validate_phase3_feature_contract,
+)
+from .weights import (
+    SampleWeightResult,
+    WeightingError,
+    build_window_sample_weights,
+)
+
+__all__ = [
+    "AcceptedCandidateRegistry",
+    "CandidateRecord",
+    "DiversityError",
+    "ExperimentArtifactError",
+    "ExperimentArtifactManifest",
+    "ExperimentConfigError",
+    "ExperimentStage",
+    "FoldRunOutput",
+    "FoldTrainingResult",
+    "ModelFamily",
+    "ModelProfile",
+    "OOFDiversityReport",
+    "PreparedTabularData",
+    "SampleWeightResult",
+    "TabularExperimentConfig",
+    "TabularTrainingError",
+    "TabularTrainingResult",
+    "WeightingError",
+    "WeightingPolicy",
+    "analyze_oof_diversity",
+    "assert_resume_compatible",
+    "build_window_sample_weights",
+    "execute_tabular_experiment",
+    "experiment_artifact_dir",
+    "load_accepted_candidate_registry",
+    "load_candidate_oof",
+    "load_experiment_artifact_manifest",
+    "load_tabular_experiment_config",
+    "prepare_experiment_artifact_dir",
+    "prepare_tabular_experiment_data",
+    "run_tabular_experiment",
+    "run_tabular_fold",
+    "stage_repeat_folds",
+    "summarize_feature_importance",
+    "validate_full_oof_contract",
+    "validate_phase3_feature_contract",
+    "write_oof_diversity_artifacts",
+    "write_tabular_experiment_artifacts",
+]

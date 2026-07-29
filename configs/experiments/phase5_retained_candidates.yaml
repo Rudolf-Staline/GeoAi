@@ -1,0 +1,17 @@
+candidates:
+  - experiment_id: EXP-TAB-003-LGB-FULL-UNIFORM
+    artifact_dir: artifacts/experiments/EXP-TAB-003-LGB-FULL-UNIFORM
+    candidate_role: strongest_lightgbm
+    retention_reason: Highest single-model robust score and strongest late-season score among required tabular candidates.
+  - experiment_id: EXP-TAB-002-LGB-INVARIANT
+    artifact_dir: artifacts/experiments/EXP-TAB-002-LGB-INVARIANT
+    candidate_role: strongest_default_weight_lightgbm
+    retention_reason: Best equal-original LightGBM combined and robust scores; simpler invariant representation than full features.
+  - experiment_id: EXP-TAB-003-CB-FULL-LOWLR
+    artifact_dir: artifacts/experiments/EXP-TAB-003-CB-FULL-LOWLR
+    candidate_role: strongest_catboost
+    retention_reason: Best CatBoost and improves both official and robust scores in fixed 50/50 blends with leading LightGBM models.
+  - experiment_id: EXP-TAB-005-LGB-OPTICAL
+    artifact_dir: artifacts/experiments/EXP-TAB-005-LGB-OPTICAL
+    candidate_role: strongest_optical_expert
+    retention_reason: Strongest sensor-specific expert, best standalone four-month score, and modest fixed-blend robustness value.

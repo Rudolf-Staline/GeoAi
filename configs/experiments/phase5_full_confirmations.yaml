@@ -1,0 +1,10 @@
+experiments:
+  - configs/experiments/exp_tab_001_relative_lgb.yaml
+  - configs/experiments/exp_tab_002_invariant_lgb.yaml
+  - configs/experiments/exp_tab_003_full_lgb.yaml
+  - configs/experiments/exp_tab_003_full_lgb_uniform.yaml
+  - configs/experiments/exp_tab_003_full_cb_low_lr.yaml
+  - configs/experiments/exp_tab_003_full_cb_class_weighted.yaml
+  - configs/experiments/exp_tab_004_radar_lgb.yaml
+  - configs/experiments/exp_tab_005_optical_lgb.yaml
+  - configs/experiments/exp_tab_006_compact_lgb.yaml

@@ -271,3 +271,194 @@ ruff format --check .
 
 The exact next unblocked task is Phase 5: run manually configured CatBoost and LightGBM tabular
 baselines against these immutable fold/window fingerprints and original-level OOF/robust metrics.
+
+## phase-05-strong-tabular-baselines — accepted
+
+| Field | Result |
+|---|---|
+| Hypothesis | Registry-selected physical/temporal features plus deterministic boosted trees can improve robust original-level validation without changing Phase 4 folds, windows, aggregation, threshold, or metrics. |
+| Models | CatBoost 1.2.10 and LightGBM 4.7.0, native missing values, four deterministic CPU threads, fold-local early stopping. No AutoML or unrestricted search. |
+| Validation | Immutable 5 folds x 3 repeats; fold fingerprint `4dbc9029f242c5ff4f8d2e23b0fb0d83334d993c1a4ecd7ce95e8e18c37ceece`; window fingerprint `89ef5e9a108a4cad09582db82ce1970dbf4873cbb3b01692c96a8fcc54b14492`; mean original aggregation; threshold `0.5`. |
+| Best single model | `EXP-TAB-003-LGB-FULL-UNIFORM`: F1 `0.979268`, ROC-AUC `0.996653`, combined `0.986222`, robust `0.980404`. |
+| Strongest default-weight model | `EXP-TAB-002-LGB-INVARIANT`: F1 `0.979749`, ROC-AUC `0.996199`, combined `0.986329`, robust `0.979904`. |
+| Strongest CatBoost | `EXP-TAB-003-CB-FULL-LOWLR`: F1 `0.979081`, ROC-AUC `0.996295`, combined `0.985967`, robust `0.979816`. |
+| Diagnostic blend | Fixed 50/50 best-single LightGBM + best CatBoost: combined `0.986614`, robust `0.980647`. This is complementarity evidence, not optimized or final ensembling. |
+| Runtime | Nine Stage C runners totaled 3,250.39 seconds; the approved-list command took 58:20 wall time and 1,969.19 MiB process peak RSS. Optimized all-candidate diversity took 84.10 seconds and 291.50 MiB. |
+| Decision | Accept. Both tree families ran successfully, every Stage C OOF has exactly 5,463 rows, all immutable fingerprints match, leading models materially beat the Phase 4 reference, and CatBoost adds fixed-blend value. |
+
+### Feature declarations
+
+All selectors use the Phase 3 registry and ordered provenance, never labels or loose substring
+matching. IDs, labels, folds, repeats, window IDs, and domain indicators remain metadata only.
+
+| Feature set | Exact count | Declaration |
+|---|---:|---|
+| Relative | 238 | 192 monthly relative-position values plus all 46 window/missingness metadata features. |
+| Invariant | 496 | 448 standard temporal aggregates, two radar-stability aggregates, and 46 metadata features; no relative raw values. |
+| Full | 688 | Entire authoritative Phase 3 tabular schema, fingerprint `af93d8bfc1406583e1834519fb5012b97052446e44674fbb8a0cf917bc9032b9`. |
+| Radar | 186 | Radar raw/derived/temporal/stability features, radar provenance-based validity, and neutral window metadata. |
+| Optical | 515 | Optical raw bands/indices/aggregates, optical provenance-based validity, and neutral window metadata. |
+| Compact physical | 101 | Exact expansion of NDWI, MNDWI, NDMI, NBR, NDVI, NDRE1/2, chlorophyll red edge, VV, VH, VV−VH and VV+VH over valid count, median, standard deviation, amplitude, IQR, first-to-last and slope; two radar-stability features; 15 declared window/gap metadata features. |
+
+Every experiment artifact stores the complete ordered `feature_list.txt` and selected schema
+fingerprint. The compact declaration is implemented as exact registry names; absent entries fail.
+
+### Stage A engineering smoke
+
+One CatBoost medium fold and one conservative LightGBM fold ran with 20-tree caps. Both produced
+365 original predictions, 2,920 window predictions, bounded probabilities, early-stopping
+metadata, native model files, checksums, and load-equivalent inference. The scores were marked
+engineering-only and never used for selection. After configuring four CPU threads, CatBoost's
+five-fold medium screen reproduced the single-thread scientific metrics exactly while reducing
+wall time from 12:06 to 4:37; peak RSS increased from about 0.95 to 1.75 GiB.
+
+### Stage B predeclared model-profile screen
+
+All scores below use repeat 0 and the same five folds. They are screening evidence only.
+
+| Profile | Weighting | Combined | Robust | Worst fold | Runner seconds | Decision |
+|---|---|---:|---:|---:|---:|---|
+| CatBoost shallow/regularized | equal original | 0.982232 | 0.978113 | 0.975935 | 96.6 | Reject: lower mean and robust score. |
+| CatBoost medium depth | equal original | 0.985103 | 0.979888 | 0.973388 | 246.9 | Reject after stronger finalists. |
+| CatBoost low learning rate | equal original | 0.985503 | 0.980138 | 0.975605 | 343.7 | Promote: highest CatBoost screen robust score. |
+| CatBoost medium/class weighted | equal original + fold class | 0.984777 | 0.980052 | 0.977970 | 236.5 | Promote: strongest CatBoost worst fold. |
+| CatBoost medium/uniform | uniform | 0.984853 | 0.979415 | 0.974009 | 228.1 | Reject: no scale-ablation benefit. |
+| LightGBM conservative leaves | equal original | 0.985753 | 0.979724 | 0.973191 | 86.5 | Reject after stronger finalists. |
+| LightGBM constrained depth | equal original | 0.986042 | 0.979952 | 0.977152 | 99.6 | Promote: strongest default-weight worst fold. |
+| LightGBM strong L1/L2 | equal original | 0.985006 | 0.978994 | 0.974715 | 102.6 | Reject: regularization reduced robustness. |
+| LightGBM conservative/class weighted | equal original + fold class | 0.984946 | 0.979121 | 0.973125 | 85.3 | Reject: no fixed-threshold benefit. |
+| LightGBM conservative/uniform | uniform | 0.986230 | 0.980836 | 0.975242 | 72.0 | Promote: best LightGBM screen robust score. |
+
+Uniform weighting is not the default. It was retained as an explicit common-loss-scale ablation;
+because the immutable panel contains exactly eight views for every original, it does not change
+relative original contributions. Class weights were calculated from de-duplicated current-fold
+training originals only. Validation weighting never used validation prevalence.
+
+### Stage B feature-representation screen
+
+The six feature families used one shared LightGBM profile, seed `4100`, repeat, and folds so only
+the selected columns changed.
+
+| Experiment | Features | Combined | Robust | Four-month | Late season | 2+ gaps |
+|---|---:|---:|---:|---:|---:|---:|
+| EXP-TAB-001 relative | 238 | 0.981952 | 0.977789 | 0.975608 | 0.969158 | 0.965350 |
+| EXP-TAB-002 invariant | 496 | 0.986031 | 0.979855 | 0.974644 | 0.971043 | 0.972851 |
+| EXP-TAB-003 full | 688 | 0.985611 | 0.979632 | 0.974160 | 0.971533 | 0.974204 |
+| EXP-TAB-004 radar | 186 | 0.931979 | 0.923536 | 0.916697 | 0.907556 | 0.899050 |
+| EXP-TAB-005 optical | 515 | 0.984259 | 0.979377 | 0.977603 | 0.973490 | 0.966132 |
+| EXP-TAB-006 compact | 101 | 0.980855 | 0.974900 | 0.969044 | 0.964969 | 0.961500 |
+
+### Stage C authoritative confirmations
+
+Only this table is selection-eligible. Each row contains 43,704 fixed window predictions and
+exactly 5,463 original/repeat predictions.
+
+| Experiment | F1 | ROC-AUC | Combined | Robust | Worst fold | L4 | L5 | L6 | Early | Mid | Late | 2+ gaps | Seconds |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| EXP-TAB-001-LGB-RELATIVE | 0.973306 | 0.995609 | 0.982227 | 0.977045 | 0.969843 | 0.976301 | 0.980584 | 0.978149 | 0.977663 | 0.978916 | 0.970118 | 0.966972 | 178.0 |
+| EXP-TAB-002-LGB-INVARIANT | 0.979749 | 0.996199 | 0.986329 | 0.979904 | 0.972655 | 0.974786 | 0.981622 | 0.984858 | 0.980661 | 0.981632 | 0.973272 | 0.974935 | 220.4 |
+| EXP-TAB-003-LGB-FULL | 0.979043 | 0.996292 | 0.985943 | 0.979690 | 0.972805 | 0.974625 | 0.981798 | 0.984280 | 0.979587 | 0.981468 | 0.973093 | 0.974840 | 290.7 |
+| EXP-TAB-003-LGB-FULL-UNIFORM | 0.979268 | 0.996653 | 0.986222 | 0.980404 | 0.972592 | 0.976812 | 0.982614 | 0.983585 | 0.981686 | 0.981657 | 0.975019 | 0.975405 | 237.4 |
+| EXP-TAB-003-CB-FULL-LOWLR | 0.979081 | 0.996295 | 0.985967 | 0.979816 | 0.971865 | 0.975818 | 0.982148 | 0.984100 | 0.980130 | 0.981542 | 0.973913 | 0.975679 | 1,074.5 |
+| EXP-TAB-003-CB-FULL-CLASSWT | 0.977556 | 0.996296 | 0.985052 | 0.979277 | 0.971551 | 0.975026 | 0.981505 | 0.982980 | 0.979814 | 0.980445 | 0.974578 | 0.975108 | 743.9 |
+| EXP-TAB-004-LGB-RADAR | 0.900826 | 0.977010 | 0.931300 | 0.922398 | 0.914561 | 0.916548 | 0.920006 | 0.925765 | 0.920994 | 0.914242 | 0.909028 | 0.901199 | 127.0 |
+| EXP-TAB-005-LGB-OPTICAL | 0.976819 | 0.996036 | 0.984506 | 0.978743 | 0.969128 | 0.977220 | 0.982668 | 0.982730 | 0.980494 | 0.979972 | 0.973875 | 0.973108 | 253.2 |
+| EXP-TAB-006-LGB-COMPACT | 0.970358 | 0.994155 | 0.979877 | 0.972388 | 0.962939 | 0.969015 | 0.976602 | 0.976944 | 0.971715 | 0.974996 | 0.963393 | 0.963368 | 125.3 |
+
+The robust winner is full/uniform LightGBM even though invariant/default-weight LightGBM has the
+slightly higher official mean (`+0.000107`). The robust winner's repeat standard deviation is
+`0.000551`, mean log loss `0.063445`, Brier score `0.015605`, positive prediction rate
+`0.399780`, and mean across-window standard deviation/disagreement `0.029141` / `0.016131`.
+Its start-month combined scores for starts 1–9 are `0.980148, 0.977042, 0.979868, 0.982511,
+0.977981, 0.977034, 0.975842, 0.970817, 0.959499`. Optical-gap scores are `0.985631`
+(none), `0.978826` (one), and `0.975405` (2+). Severe optical limitation remains the weakest
+completeness bin at `0.946206`.
+
+Against the Phase 4 engineering reference, the robust winner improves F1 by `0.052460`, ROC-AUC
+by `0.017588`, combined score by `0.038511`, robust score by `0.043757`, and worst fold by
+`0.061996`. Improvements for lengths 4/5/6 are `0.037448 / 0.042768 / 0.040790`; early/mid/late
+season gains are `0.040842 / 0.044097 / 0.043236`; the 2+-gap gain is `0.029873`.
+
+### OOF diversity and retention
+
+The complete audit contains 36 pair rows, 324 length/season/gap overlap rows, and 36 fixed 50/50
+blend rows. No weights were optimized.
+
+- Best-single LightGBM versus low-rate CatBoost: Pearson `0.998640`, Spearman `0.960720`, residual
+  correlation `0.981329`, binary disagreement `0.004942`. CatBoost contributes 9 unique true
+  positives and 9 unique false positives in the pair orientation; the fixed blend improves
+  combined/robust to `0.986614 / 0.980647`. Retain CatBoost for demonstrated complementarity.
+- Invariant LightGBM plus low-rate CatBoost gives the highest diagnostic-blend combined score,
+  `0.987057`, with robust `0.980606`. Retain invariant LightGBM as the simpler/default-weight
+  candidate.
+- Best-single LightGBM versus optical expert: Pearson `0.995632`, residual `0.940944`, disagreement
+  `0.009336`; its blend scores `0.986186 / 0.980469`. Retain the optical expert for the best
+  standalone four-month score and modest robustness complementarity.
+- Radar-only is genuinely diverse (Pearson `0.903649`, residual `0.571923`, disagreement
+  `0.071389`) but its blend collapses to `0.980007 / 0.974490`. Reject it from the retained
+  candidate registry despite keeping its complete OOF as a diagnostic.
+- Reject relative, equal-original full LightGBM, class-weighted CatBoost, and compact physical
+  models: each is weaker and its equal blend does not exceed the leading evidence sufficiently.
+
+The retained registry contains full/uniform LightGBM, invariant/default-weight LightGBM,
+low-rate CatBoost, and optical LightGBM. This is a Phase 5 candidate registry, not a final
+ensemble selection.
+
+### Importance and suspicious-feature audit
+
+For the robust winner, LightGBM gain is grouped as 73.70% optical indices, 10.66% raw optical,
+9.92% raw radar, and 3.51% radar-derived features. Missingness contributes less than 0.001% gain;
+no missingness or calendar feature appears in the top-ten gain list. `optical__ndwi__max` alone
+has 38.82% mean gain and the largest bounded fold-0 permutation log-loss increase (`0.024156`),
+so it is explicitly flagged as dominant rather than silently removed. Low-rate CatBoost spreads
+its native importance more broadly: 60.22% optical indices, 20.23% raw optical, 7.39% raw radar,
+and 6.98% radar-derived.
+
+Importance is associative, not causal. Domain specificity is deferred to Phase 7. The optical
+expert places `metadata__end_month` in its top-ten split list, but its metadata-window gain share
+is only 0.39%; it remains flagged for later domain diagnostics rather than removed post hoc.
+
+### Artifacts, reproducibility, and limitations
+
+Every serious run writes resolved configuration, compatibility manifest, both scientific
+fingerprints, feature schema/list, metrics, fold/repeat/slice tables, 5,463-row original OOF,
+43,704-row window predictions, native/group/permutation importance, model checksums, runtime, and
+report under ignored `artifacts/experiments/<experiment_id>/`. Generated model files and
+competition data remain untracked.
+
+The per-experiment RSS field is a process-lifetime upper bound. In approved-list mode later runs
+inherit the earlier process maximum; the Stage C batch-level 1,969.19 MiB measurement is reliable,
+but later per-model values are conservative rather than isolated peaks. The initial exhaustive
+diversity implementation redundantly rebuilt stress aggregations and was stopped without writing
+partial artifacts; a tested mean-linearity cache produces exactly equivalent official/robust
+blend components and completed in 84.10 seconds. No test probabilities, final full-data models,
+calibration, optimized ensemble, or submission were created.
+
+### Commands
+
+```bash
+python scripts/audit_data.py --config configs/base.yaml
+python scripts/generate_windows.py --config configs/base.yaml
+python scripts/build_features.py --config configs/base.yaml
+python scripts/build_validation.py --config configs/base.yaml
+python scripts/train_tabular.py --config configs/base.yaml \
+  --experiment configs/experiments/screen_cb_medium.yaml --stage smoke
+python scripts/train_tabular.py --config configs/base.yaml \
+  --experiment configs/experiments/screen_lgb_conservative.yaml --stage smoke
+python scripts/train_tabular.py --config configs/base.yaml \
+  --approved-list configs/experiments/phase5_screening.yaml --stage screen
+python scripts/train_tabular.py --config configs/base.yaml \
+  --approved-list configs/experiments/phase5_representation_screening.yaml --stage screen
+python scripts/train_tabular.py --config configs/base.yaml \
+  --approved-list configs/experiments/phase5_full_confirmations.yaml --stage full
+python scripts/train_tabular.py --config configs/base.yaml \
+  --diversity-registry configs/experiments/phase5_all_stage_c_candidates.yaml
+python -m compileall src tests
+pytest
+ruff check .
+ruff format --check .
+```
+
+The exact next unblocked task is Phase 6: compare a compact masked temporal model against the
+retained Phase 5 candidates using these same fold/window manifests, original-level OOF contract,
+and robust selection criterion. Phase 5 stops here.

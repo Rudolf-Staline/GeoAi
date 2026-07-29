@@ -36,7 +36,7 @@ data/processed/*
 artifacts/*
 !artifacts/README.md
 !artifacts/.gitkeep
-models/
+/models/
 checkpoints/
 wandb/
 mlruns/
