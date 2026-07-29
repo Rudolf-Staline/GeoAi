@@ -3,12 +3,15 @@
 from .audit import (
     DataAudit,
     audit_competition_data,
+    git_provenance,
     sensor_month_availability,
     write_audit_artifacts,
 )
 from .config import (
+    BandSemanticMapping,
     ConfigError,
     DataConfig,
+    FeatureConfig,
     ProjectConfig,
     ValidationConfig,
     WindowGenerationConfig,
@@ -27,6 +30,7 @@ from .masks import (
     MissingnessMaskTemplate,
     build_mask_template,
     extract_test_mask_library,
+    extract_test_mask_templates,
 )
 from .schema import (
     SchemaError,
@@ -47,17 +51,20 @@ from .windows import (
     TemporalWindowError,
     enumerate_consecutive_windows,
     generate_temporal_windows,
+    materialize_test_windows,
     window_dataset_fingerprint,
     window_view_fingerprint,
 )
 
 __all__ = [
     "MAX_WINDOW_LENGTH",
+    "BandSemanticMapping",
     "CompetitionData",
     "ConfigError",
     "ConsecutiveWindow",
     "DataAudit",
     "DataConfig",
+    "FeatureConfig",
     "FoldAssignmentError",
     "MaskLibrary",
     "MaskTemplateError",
@@ -77,9 +84,12 @@ __all__ = [
     "build_mask_template",
     "enumerate_consecutive_windows",
     "extract_test_mask_library",
+    "extract_test_mask_templates",
     "generate_temporal_windows",
+    "git_provenance",
     "load_competition_data",
     "load_project_config",
+    "materialize_test_windows",
     "parse_temporal_column",
     "parse_temporal_columns",
     "sensor_month_availability",

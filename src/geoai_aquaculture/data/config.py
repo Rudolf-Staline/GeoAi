@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal
 
@@ -77,6 +77,70 @@ class WindowGenerationConfig:
 
 
 @dataclass(frozen=True, slots=True)
+class BandSemanticMapping:
+    """Explicit, validated mapping from scientific roles to raw configured bands."""
+
+    vv: str = "VV"
+    vh: str = "VH"
+    blue: str = "blue"
+    green: str = "green"
+    red: str = "red"
+    red_edge_1: str = "re1"
+    red_edge_2: str = "re2"
+    red_edge_3: str = "re3"
+    nir: str = "nir"
+    narrow_nir: str = "nira"
+    swir1: str = "swir1"
+    swir2: str = "swir2"
+
+    def __post_init__(self) -> None:
+        values = tuple(self.roles.values())
+        if any(not isinstance(value, str) or not value.strip() for value in values):
+            raise ConfigError("features.bands roles must be non-empty strings")
+        if len(values) != len(set(values)):
+            raise ConfigError("features.bands must map every semantic role unambiguously")
+
+    @property
+    def roles(self) -> dict[str, str]:
+        """Return semantic roles in stable scientific order."""
+
+        return {
+            "vv": self.vv,
+            "vh": self.vh,
+            "blue": self.blue,
+            "green": self.green,
+            "red": self.red,
+            "red_edge_1": self.red_edge_1,
+            "red_edge_2": self.red_edge_2,
+            "red_edge_3": self.red_edge_3,
+            "nir": self.nir,
+            "narrow_nir": self.narrow_nir,
+            "swir1": self.swir1,
+            "swir2": self.swir2,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class FeatureConfig:
+    """Numerical and semantic choices for deterministic Phase 3 features."""
+
+    version: str = "phase3_v1"
+    epsilon: float = 1e-6
+    bands: BandSemanticMapping = field(default_factory=BandSemanticMapping)
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.version, str) or not self.version.strip():
+            raise ConfigError("features.version must be a non-empty string")
+        if (
+            not isinstance(self.epsilon, int | float)
+            or isinstance(self.epsilon, bool)
+            or not np.isfinite(float(self.epsilon))
+            or self.epsilon <= 0.0
+        ):
+            raise ConfigError("features.epsilon must be finite and > 0")
+
+
+@dataclass(frozen=True, slots=True)
 class ProjectConfig:
     """Phase-independent project settings needed by the data audit."""
 
@@ -87,6 +151,7 @@ class ProjectConfig:
     data: DataConfig
     validation: ValidationConfig
     augmentation: WindowGenerationConfig
+    features: FeatureConfig
     artifacts_dir: Path
 
 
@@ -143,6 +208,15 @@ def _probability(value: object, key: str) -> float:
     return result
 
 
+def _positive_float(value: object, key: str) -> float:
+    if not isinstance(value, int | float) or isinstance(value, bool):
+        raise ConfigError(f"configuration key '{key}' must be numeric")
+    result = float(value)
+    if not np.isfinite(result) or result <= 0.0:
+        raise ConfigError(f"configuration key '{key}' must be finite and > 0")
+    return result
+
+
 def _window_lengths(value: object, key: str) -> tuple[int, ...]:
     if not isinstance(value, list) or any(
         not isinstance(item, int) or isinstance(item, bool) for item in value
@@ -187,6 +261,7 @@ def load_project_config(config_path: str | Path) -> ProjectConfig:
     data = _mapping(_required(root, "data", "root"), "data")
     validation = _optional_mapping(root, "validation")
     augmentation = _optional_mapping(root, "augmentation")
+    features = _optional_mapping(root, "features")
     reporting = _mapping(_required(root, "reporting", "root"), "reporting")
     project_root = _find_project_root(source_path)
 
@@ -304,6 +379,28 @@ def load_project_config(config_path: str | Path) -> ProjectConfig:
             "test missingness masks are sampled views and cannot be combined with exhaustive mode"
         )
 
+    semantic = _optional_mapping(features, "bands")
+    default_semantic = BandSemanticMapping()
+    semantic_mapping = BandSemanticMapping(
+        **{
+            role: _string(semantic.get(role, raw_band), f"features.bands.{role}")
+            for role, raw_band in default_semantic.roles.items()
+        }
+    )
+    semantic_values = tuple(semantic_mapping.roles.values())
+    if len(semantic_values) != len(set(semantic_values)):
+        raise ConfigError("features.bands must map every semantic role unambiguously")
+    if {semantic_mapping.vv, semantic_mapping.vh} != set(data_config.radar_bands):
+        raise ConfigError("features.bands vv/vh roles must exactly map configured radar bands")
+    optical_semantics = set(semantic_values) - {semantic_mapping.vv, semantic_mapping.vh}
+    if optical_semantics != set(data_config.optical_bands):
+        raise ConfigError("features.bands optical roles must exactly map configured optical bands")
+    feature_config = FeatureConfig(
+        version=_string(features.get("version", "phase3_v1"), "features.version"),
+        epsilon=_positive_float(features.get("epsilon", 1e-6), "features.epsilon"),
+        bands=semantic_mapping,
+    )
+
     return ProjectConfig(
         source_path=source_path,
         project_root=project_root,
@@ -312,5 +409,6 @@ def load_project_config(config_path: str | Path) -> ProjectConfig:
         data=data_config,
         validation=validation_config,
         augmentation=window_config,
+        features=feature_config,
         artifacts_dir=artifacts_root,
     )

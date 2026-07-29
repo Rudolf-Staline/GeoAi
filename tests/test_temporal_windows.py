@@ -23,6 +23,7 @@ from geoai_aquaculture.data import (
     generate_temporal_windows,
     load_competition_data,
     load_project_config,
+    materialize_test_windows,
     window_dataset_fingerprint,
     window_view_fingerprint,
 )
@@ -316,6 +317,26 @@ def test_per_band_optical_gap_is_preserved(tmp_path: Path) -> None:
     assert not np.isnan(windows.values[0, 2, green_index])
     assert windows.manifest.loc[0, "optical_months"] == 5
     assert windows.manifest.loc[0, "internal_optical_gap_count"] == 1
+
+
+def test_observed_test_windows_preserve_values_masks_and_input(tmp_path: Path) -> None:
+    _config, data, _folds = _loaded(tmp_path)
+    test_before = data.test.copy(deep=True)
+
+    windows = materialize_test_windows(data)
+    repeated = materialize_test_windows(data)
+
+    assert windows.n_windows == data.test.shape[0]
+    assert "label" not in windows.manifest
+    assert windows.manifest["fold"].eq(-1).all()
+    assert windows.manifest["original_id"].tolist() == data.test["ID"].tolist()
+    assert windows.calendar_months[3].tolist() == [7, 8, 9, 10, 11, 12]
+    assert windows.values[0, 0, windows.band_names.index("VH")] == pytest.approx(500_100.0)
+    assert np.isnan(windows.values[0, 1, windows.band_names.index("blue")])
+    assert windows.optical_mask[3, 2, 0] == np.bool_(False)
+    assert windows.optical_mask[3, 2, 1:].all()
+    assert window_dataset_fingerprint(windows) == window_dataset_fingerprint(repeated)
+    pd.testing.assert_frame_equal(data.test, test_before)
 
 
 def test_padding_and_configured_dropout_are_distinguishable(tmp_path: Path) -> None:

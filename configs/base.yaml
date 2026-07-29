@@ -31,6 +31,23 @@ augmentation:
   optical_dropout_enabled: false
   optical_dropout_probability: 0.15
 
+features:
+  version: phase3_v1
+  epsilon: 0.000001
+  bands:
+    vv: VV
+    vh: VH
+    blue: blue
+    green: green
+    red: red
+    red_edge_1: re1
+    red_edge_2: re2
+    red_edge_3: re3
+    nir: nir
+    narrow_nir: nira
+    swir1: swir1
+    swir2: swir2
+
 reporting:
   artifacts_dir: artifacts
   save_oof: true

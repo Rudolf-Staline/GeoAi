@@ -15,7 +15,11 @@ from .folds import (
     validate_original_fold_manifest,
 )
 from .loading import CompetitionData
-from .masks import MaskLibrary, MissingnessMaskTemplate
+from .masks import (
+    MaskLibrary,
+    MissingnessMaskTemplate,
+    extract_test_mask_templates,
+)
 
 MAX_WINDOW_LENGTH = 6
 
@@ -257,6 +261,22 @@ def _validate_generation_inputs(
         ) from exc
 
 
+def _raw_value_cube(frame: pd.DataFrame, data: CompetitionData) -> np.ndarray:
+    band_names = data.config.data.bands
+    band_index = {band: index for index, band in enumerate(band_names)}
+    lookup = {(item.band, item.month): item.name for item in data.temporal_columns}
+    values = np.empty(
+        (frame.shape[0], data.config.data.months, len(band_names)),
+        dtype=np.float64,
+    )
+    for month in range(1, data.config.data.months + 1):
+        for band in band_names:
+            values[:, month - 1, band_index[band]] = frame[lookup[(band, month)]].to_numpy(
+                dtype=np.float64
+            )
+    return values
+
+
 def generate_temporal_windows(
     data: CompetitionData,
     fold_manifest: pd.DataFrame,
@@ -277,16 +297,7 @@ def generate_temporal_windows(
     optical_bands = data.config.data.optical_bands
     band_index = {band: index for index, band in enumerate(band_names)}
     optical_index = {band: index for index, band in enumerate(optical_bands)}
-    lookup = {(item.band, item.month): item.name for item in data.temporal_columns}
-    source_values = np.empty(
-        (data.train.shape[0], data.config.data.months, len(band_names)),
-        dtype=np.float64,
-    )
-    for month in range(1, data.config.data.months + 1):
-        for band in band_names:
-            source_values[:, month - 1, band_index[band]] = data.train[
-                lookup[(band, month)]
-            ].to_numpy(dtype=np.float64)
+    source_values = _raw_value_cube(data.train, data)
 
     manifests: list[dict[str, object]] = []
     value_views: list[np.ndarray] = []
@@ -418,6 +429,120 @@ def generate_temporal_windows(
         optical_bands=optical_bands,
     )
     return dataset
+
+
+def materialize_test_windows(data: CompetitionData) -> TemporalWindowDataset:
+    """Represent each observed test row as one masked Phase 2 temporal window."""
+
+    templates = extract_test_mask_templates(data)
+    if len(templates) != data.test.shape[0]:
+        raise TemporalWindowError("row-aligned test masks must match the test row count")
+    band_names = data.config.data.bands
+    optical_bands = data.config.data.optical_bands
+    band_index = {band: index for index, band in enumerate(band_names)}
+    optical_index = {band: index for index, band in enumerate(optical_bands)}
+    source_values = _raw_value_cube(data.test, data)
+
+    manifests: list[dict[str, object]] = []
+    value_views: list[np.ndarray] = []
+    month_views: list[np.ndarray] = []
+    relative_views: list[np.ndarray] = []
+    position_views: list[np.ndarray] = []
+    radar_views: list[np.ndarray] = []
+    optical_views: list[np.ndarray] = []
+    for row_index, template in enumerate(templates):
+        position_mask = np.zeros(MAX_WINDOW_LENGTH, dtype=bool)
+        position_mask[: template.window_length] = True
+        calendar_months = np.zeros(MAX_WINDOW_LENGTH, dtype=np.int8)
+        calendar_months[: template.window_length] = np.arange(
+            template.window_start,
+            template.window_end + 1,
+            dtype=np.int8,
+        )
+        relative_positions = np.zeros(MAX_WINDOW_LENGTH, dtype=np.int8)
+        relative_positions[: template.window_length] = np.arange(
+            1, template.window_length + 1, dtype=np.int8
+        )
+        radar_mask = np.zeros(MAX_WINDOW_LENGTH, dtype=bool)
+        optical_mask = np.zeros((MAX_WINDOW_LENGTH, len(optical_bands)), dtype=bool)
+        for position, month in enumerate(range(template.window_start, template.window_end + 1)):
+            radar_mask[position] = template.radar_availability[month - 1]
+            optical_mask[position, :] = template.optical_availability[month - 1]
+
+        values = np.full((MAX_WINDOW_LENGTH, len(band_names)), np.nan, dtype=np.float64)
+        values[: template.window_length, :] = source_values[
+            row_index, template.window_start - 1 : template.window_end, :
+        ]
+        for band in data.config.data.radar_bands:
+            values[~radar_mask, band_index[band]] = np.nan
+        for band in optical_bands:
+            values[~optical_mask[:, optical_index[band]], band_index[band]] = np.nan
+
+        optical_month_mask = optical_mask.all(axis=1) & position_mask
+        original_id = str(data.test.iloc[row_index][data.config.data.id_column])
+        radar_pattern = _bit_string(radar_mask)
+        optical_pattern = _optical_bit_string(optical_mask)
+        window_id = _stable_window_id(
+            original_id=original_id,
+            fold=-1,
+            generation_mode="observed_test",
+            augmentation_seed=-1,
+            view_index=0,
+            window_start=template.window_start,
+            window_length=template.window_length,
+            mask_id=template.mask_id,
+            radar_pattern=radar_pattern,
+            optical_pattern=optical_pattern,
+        )
+        manifests.append(
+            {
+                "ID": original_id,
+                "window_id": window_id,
+                "original_id": original_id,
+                "fold": -1,
+                "generation_mode": "observed_test",
+                "view_index": 0,
+                "augmentation_seed": -1,
+                "window_start": template.window_start,
+                "window_end": template.window_end,
+                "window_length": template.window_length,
+                "calendar_months": ",".join(str(value) for value in calendar_months),
+                "relative_positions": ",".join(str(value) for value in relative_positions),
+                "position_mask": _bit_string(position_mask),
+                "radar_availability": radar_pattern,
+                "optical_month_availability": _bit_string(optical_month_mask),
+                "optical_band_availability": optical_pattern,
+                "temporal_dropout_mask": "0" * MAX_WINDOW_LENGTH,
+                "optical_dropout_mask": "0" * MAX_WINDOW_LENGTH,
+                "radar_months": int(radar_mask.sum()),
+                "optical_months": int(optical_month_mask.sum()),
+                "internal_optical_gap_count": int(
+                    (radar_mask & position_mask & ~optical_month_mask).sum()
+                ),
+                "test_mask_optical_gap_count": template.internal_optical_gap_count,
+                "test_mask_used": True,
+                "mask_id": template.mask_id,
+                "source_mask_frequency": 1,
+            }
+        )
+        value_views.append(values)
+        month_views.append(calendar_months)
+        relative_views.append(relative_positions)
+        position_views.append(position_mask)
+        radar_views.append(radar_mask)
+        optical_views.append(optical_mask)
+
+    return TemporalWindowDataset(
+        manifest=pd.DataFrame(manifests),
+        values=np.stack(value_views),
+        calendar_months=np.stack(month_views),
+        relative_positions=np.stack(relative_views),
+        position_mask=np.stack(position_views),
+        radar_mask=np.stack(radar_views),
+        optical_mask=np.stack(optical_views),
+        band_names=band_names,
+        optical_bands=optical_bands,
+    )
 
 
 def window_dataset_fingerprint(dataset: TemporalWindowDataset) -> str:

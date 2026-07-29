@@ -93,3 +93,99 @@ duplicate views with distinct stable view indices; the fixed folds are a Phase 2
 manifest rather than the repeated validation protocol planned for Phase 4; and optional dropout
 paths are tested but disabled pending ablation evidence. The exact next task unblocked is Phase 3,
 physics-informed feature engineering over these raw values and explicit masks.
+
+## phase-03-physics-temporal-features — accepted
+
+| Field | Result |
+|---|---|
+| Hypothesis | A small, explicitly mapped set of water/vegetation/radar transformations plus gap-aware temporal summaries can represent 4–6 month windows without imputation, leakage, or loss of missingness semantics. |
+| Representation | One 688-column tabular matrix and one length-six masked NumPy sequence representation. IDs, window IDs, folds, and optional labels remain attached metadata only. |
+| Model and parameters | None. Feature version `phase3_v1`; safe-division epsilon `1e-6`; no fitted preprocessing. |
+| Validation setup | Synthetic formula, denominator, validity, partial-band, gap-aware slope, insufficient-observation, padding, schema-alignment, fold-retention, immutability, determinism, CLI, and numerical-finiteness tests; real sampled and exhaustive audits. |
+| F1 / ROC-AUC / combined score | Not applicable; Phase 3 trains no model. |
+| Score by window length / worst season | Not applicable; subgroup scoring begins after supervised validation exists. |
+| Runtime | Sampled: 45.460 seconds inside the command, 47.54 seconds wall time, 466,824 KiB peak RSS. Exhaustive: 34.422 seconds inside the command, 36.50 seconds wall time, 1,017,104 KiB peak RSS. |
+| Artifacts | Ignored aggregate-only files under `artifacts/features/`: registry, feature-group counts, train/test group missingness, sequence-mask summary, shape/fingerprint summary, Markdown report, and run metadata. No raw rows, IDs, or labels are persisted. |
+| Decision | Accept. Both representations are deterministic, numerically finite-or-missing, train/test aligned, input-preserving, and retain Phase 2 identities, folds, calendar time, relative time, sensor masks, per-band masks, and padding. |
+
+### Feature groups and formulas
+
+- The semantic mapping is explicit in `configs/base.yaml`: radar `VV`/`VH`; visible `blue`,
+  `green`, `red`; red edge `re1`, `re2`, `re3`; NIR `nir`; narrow NIR `nira`; and SWIR
+  `swir1`, `swir2`. Every configured/observed band is mapped exactly once; unavailable or
+  ambiguous mappings fail.
+- Eight radar monthly channels are retained: raw VV, raw VH, VV−VH, VV+VH,
+  VV/abs(VH), VH/abs(VV), and adjacent-position first differences for VV and VH. Raw VV/VH
+  aggregation supplies first-to-last change, amplitude, standard deviation, and stability;
+  mean absolute adjacent change adds two explicit stability summaries.
+- Ten raw optical channels and 14 indices are retained. The indices are NDVI, NDWI, MNDWI,
+  NDMI, NBR, two narrow-NIR/red-edge normalized differences, narrow-NIR/RE1−1, NIR/SWIR1,
+  NIR/SWIR2, Green/SWIR1, Green/SWIR2, normalized Green/Red contrast, and normalized
+  Blue/Green contrast.
+- Every ratio is valid only when all inputs are finite and the denominator magnitude exceeds
+  `1e-6`. Invalid or overflowing divisions are explicitly missing; neither positive nor negative
+  infinity is allowed.
+- Each of the 32 monthly channels contributes six relative-position columns and 14 valid-only
+  aggregates: count, mean, median, population standard deviation, minimum, maximum, amplitude,
+  25th/75th percentiles, IQR, first/last valid values, first-to-last difference, and slope over
+  the true relative positions. Variation/change/slope require at least two observations, so one
+  observation is distinguishable from true zero variance.
+- The 688 tabular columns are exactly 192 relative-position values, 448 temporal aggregates,
+  two radar stability summaries, and 46 metadata/missingness features. The registry contains 739
+  definitions across tabular and sequence outputs.
+- Sequence arrays have shapes `(N, 6, 8)` radar, `(N, 6, 10)` raw optical, `(N, 6, 14)`
+  optical indices, `(N, 6, 2)` cyclic month encoding, and `(N, 6, 12)` raw per-band masks,
+  plus channel, sensor, index, and padding masks and integer calendar/relative positions.
+
+### Real-data audit findings
+
+- Sampled train features have shape `(14,568, 688)` and sequence row count 14,568; test
+  features have shape `(1,030, 688)` and sequence row count 1,030. Length distributions remain
+  4,801 / 4,929 / 4,838 in sampled train and 345 / 343 / 342 in test for lengths 4 / 5 / 6.
+- Exhaustive train features have shape `(43,704, 688)`, preserving the Phase 2 counts 16,389 /
+  14,568 / 12,747 by length.
+- Inside non-padding positions, fully missing optical months occur at 6.3779% in masked train and
+  6.2172% in test; all-raw-band missingness is 5.3149% versus 5.1810%. Including explicit
+  padding, relative raw optical columns are missing at 21.9419% versus 21.8932%. These small
+  differences are reported diagnostically, not corrected in this phase.
+- Sampled masked train and test have no missing radar sensor-months. Derived radar sequence masks
+  are false at the first position for first-difference channels by definition, not because the
+  radar sensor is absent.
+- Train/test schema fingerprints match exactly for both representations. Same-input rebuilds are
+  identical, input temporal windows remain unchanged, and infinity counts are zero.
+- The observed radar values are mostly negative and look compatible with a log-like supplied
+  representation, but no competition documentation proves the physical scale. Required
+  differences, sums, and safe ratios therefore operate on the supplied numbers; logarithmic
+  ratio variants are rejected for now.
+
+### Rejected ideas and limitations
+
+- Log radar ratios are rejected because the radar scale is unproven and values are frequently
+  negative. Hundreds of arbitrary pairwise band interactions are rejected as physically weak
+  and likely to increase later overfitting risk.
+- Zero filling, learned imputation, global scaling, label-based feature selection, and domain
+  adaptation are outside Phase 3 and were not performed. Missing physical values remain `NaN`
+  with explicit masks.
+- The aggregate table happens to be fully defined on the supplied sampled/test windows because
+  every real channel has enough valid observations; relative columns and sequence tensors still
+  preserve all padding and optical absence. Synthetic tests cover zero- and one-observation cases.
+- Exhaustive construction is CPU-compatible but requires about 1 GiB peak memory. No claim about
+  predictive value is made until the fixed Phase 4 validation protocol exists.
+
+### Commands
+
+```bash
+python scripts/audit_data.py --config configs/base.yaml
+python scripts/generate_windows.py --config configs/base.yaml
+python scripts/build_features.py --config configs/base.yaml
+python scripts/build_features.py --config configs/base.yaml --mode exhaustive \
+  --output-dir artifacts/features_exhaustive
+python -m compileall src tests
+pytest
+ruff check .
+ruff format --check .
+```
+
+The exact next task unblocked is Phase 4: implement the fixed repeated stratified grouped and
+stress-validation framework, using persistent original-row folds and these immutable feature
+schemas. No model training has occurred yet.

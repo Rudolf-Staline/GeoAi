@@ -201,8 +201,10 @@ class MaskLibrary:
         )
 
 
-def extract_test_mask_library(data: CompetitionData) -> MaskLibrary:
-    """Extract only boolean missingness patterns from the validated test frame."""
+def extract_test_mask_templates(
+    data: CompetitionData,
+) -> tuple[MissingnessMaskTemplate, ...]:
+    """Extract one row-aligned boolean mask per test sample, without values or IDs."""
 
     availability = sensor_month_availability(data.test, data)
     radar_partial = availability["radar_any"] ^ availability["radar_all"]
@@ -210,8 +212,7 @@ def extract_test_mask_library(data: CompetitionData) -> MaskLibrary:
         raise MaskTemplateError("test contains partial radar sensor-month availability")
 
     lookup = {(item.band, item.month): item.name for item in data.temporal_columns}
-    observed: dict[str, MissingnessMaskTemplate] = {}
-    frequencies: dict[str, int] = {}
+    templates: list[MissingnessMaskTemplate] = []
     for row_index in range(data.test.shape[0]):
         radar = tuple(bool(value) for value in availability["radar_all"].iloc[row_index].tolist())
         optical = tuple(
@@ -226,6 +227,16 @@ def extract_test_mask_library(data: CompetitionData) -> MaskLibrary:
             optical,
             optical_bands=data.config.data.optical_bands,
         )
+        templates.append(template)
+    return tuple(templates)
+
+
+def extract_test_mask_library(data: CompetitionData) -> MaskLibrary:
+    """Deduplicate row-aligned test masks and retain empirical frequencies."""
+
+    observed: dict[str, MissingnessMaskTemplate] = {}
+    frequencies: dict[str, int] = {}
+    for template in extract_test_mask_templates(data):
         observed.setdefault(template.mask_id, template)
         frequencies[template.mask_id] = frequencies.get(template.mask_id, 0) + 1
 

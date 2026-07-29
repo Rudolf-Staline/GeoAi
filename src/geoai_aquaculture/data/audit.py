@@ -40,7 +40,9 @@ def _display_path(path: Path, project_root: Path) -> str:
         return path.as_posix()
 
 
-def _git_provenance(project_root: Path) -> dict[str, Any]:
+def git_provenance(project_root: Path) -> dict[str, Any]:
+    """Return the current Git commit and tracked-file dirtiness when available."""
+
     try:
         commit = subprocess.run(
             ["git", "rev-parse", "HEAD"],
@@ -408,7 +410,7 @@ def audit_competition_data(data: CompetitionData) -> DataAudit:
         "provenance": {
             "config_path": _display_path(data.config.source_path, data.config.project_root),
             "config_sha256": _sha256(data.config.source_path),
-            "git": _git_provenance(data.config.project_root),
+            "git": git_provenance(data.config.project_root),
         },
     }
     tables = {

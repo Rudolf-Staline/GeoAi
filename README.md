@@ -68,6 +68,26 @@ values are never copied. Manifests and summaries are written under
 `artifacts/temporal_windows/`, while raw window values remain in memory and generated artifacts
 remain excluded from Git.
 
+## Phase 3 feature representations
+
+Build aligned tabular and masked-sequence representations from the configured sampled windows:
+
+```bash
+python scripts/build_features.py --config configs/base.yaml
+```
+
+Use `--mode exhaustive` to build features for all 24 windows per original training row. The
+tabular output contains relative-position values, valid-only temporal aggregates, and explicit
+window/missingness metadata. The sequence output keeps radar, optical, spectral-index,
+calendar-month, per-band, sensor, and padding masks separate. No imputer or other dataset-wide
+preprocessor is fitted.
+
+The CLI writes only aggregate summaries, a machine-readable feature registry, fingerprints, and
+run provenance under `artifacts/features/`; competition rows, labels, and IDs are not persisted.
+The default real-data schema has 688 tabular features and sequence arrays with 8 radar channels,
+10 raw optical channels, 14 optical-index channels, 2 cyclic month channels, and a maximum length
+of 6.
+
 ## Repository map
 
 ```text
