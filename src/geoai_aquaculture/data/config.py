@@ -45,15 +45,121 @@ class DataConfig:
 
 
 @dataclass(frozen=True, slots=True)
+class SeasonDefinition:
+    """A named, non-overlapping group of valid window-start months."""
+
+    name: str
+    start_months: tuple[int, ...]
+
+    def __post_init__(self) -> None:
+        if not self.name.strip():
+            raise ConfigError("validation season names must be non-empty")
+        if not self.start_months or any(month < 1 or month > 9 for month in self.start_months):
+            raise ConfigError("validation season start months must be within 1-9")
+        if len(self.start_months) != len(set(self.start_months)):
+            raise ConfigError("validation season start months must be unique")
+
+
+@dataclass(frozen=True, slots=True)
+class RobustScoreWeights:
+    """Fixed weights for the Phase 4 robust model-comparison diagnostic."""
+
+    mean_combined: float = 0.50
+    worst_fold: float = 0.20
+    worst_window_length: float = 0.15
+    worst_season: float = 0.15
+
+    def __post_init__(self) -> None:
+        values = (
+            self.mean_combined,
+            self.worst_fold,
+            self.worst_window_length,
+            self.worst_season,
+        )
+        if any(not np.isfinite(value) or value < 0.0 for value in values):
+            raise ConfigError("validation.robust_score_weights must be finite and non-negative")
+        if not np.isclose(sum(values), 1.0, atol=1e-12):
+            raise ConfigError("validation.robust_score_weights must sum to one")
+
+
+DEFAULT_SEASONS = (
+    SeasonDefinition("early_year", (1, 2, 3)),
+    SeasonDefinition("mid_year", (4, 5, 6)),
+    SeasonDefinition("late_year", (7, 8, 9)),
+)
+
+
+@dataclass(frozen=True, slots=True)
 class ValidationConfig:
-    """Original-row splitting settings shared by later validation phases."""
+    """Authoritative Phase 4 splitting, views, aggregation, and scoring policy."""
 
     strategy: str = "stratified_group_kfold"
+    seed: int = 2026
     n_splits: int = 5
     n_repeats: int = 3
     fixed_threshold: float = FIXED_THRESHOLD
     window_lengths: tuple[int, ...] = (4, 5, 6)
     split_before_augmentation: bool = True
+    primary_window_mode: Literal["sampled"] = "sampled"
+    sampled_windows_per_original: int = 8
+    validation_window_seed: int = 2027
+    aggregation_method: Literal["mean", "median", "logit_mean", "trimmed_mean"] = "mean"
+    trimmed_mean_fraction: float = 0.10
+    seasons: tuple[SeasonDefinition, ...] = DEFAULT_SEASONS
+    optical_severe_limit: float = 0.50
+    optical_high_completeness: float = 0.80
+    robust_score_weights: RobustScoreWeights = field(default_factory=RobustScoreWeights)
+    exhaustive_stress_enabled: bool = False
+    reference_estimator_enabled: bool = True
+    similarity_holdout_fraction: float = 0.20
+    similarity_holdout_min_samples: int = 100
+    cluster_n_clusters: int = 5
+    cluster_min_size: int = 100
+
+    def __post_init__(self) -> None:
+        if self.strategy != "stratified_group_kfold":
+            raise ConfigError("validation.strategy must be 'stratified_group_kfold'")
+        if self.seed < 0 or self.validation_window_seed < 0:
+            raise ConfigError("validation seeds must be non-negative")
+        if self.n_splits < 2 or self.n_repeats < 1:
+            raise ConfigError("validation requires at least two folds and one repeat")
+        if self.fixed_threshold != FIXED_THRESHOLD:
+            raise ConfigError(f"validation.threshold must remain exactly {FIXED_THRESHOLD}")
+        if self.window_lengths != (4, 5, 6):
+            raise ConfigError("validation.window_lengths must remain exactly (4, 5, 6)")
+        if not self.split_before_augmentation:
+            raise ConfigError("validation splitting must precede temporal augmentation")
+        if self.primary_window_mode != "sampled":
+            raise ConfigError("validation.primary_window_mode must remain 'sampled'")
+        if self.sampled_windows_per_original < 1:
+            raise ConfigError("validation sampled window count must be positive")
+        if self.aggregation_method not in {"mean", "median", "logit_mean", "trimmed_mean"}:
+            raise ConfigError("validation.aggregation_method is unsupported")
+        if not 0.0 <= self.trimmed_mean_fraction < 0.5:
+            raise ConfigError("validation.trimmed_mean_fraction must be in [0, 0.5)")
+        occupied = [month for season in self.seasons for month in season.start_months]
+        if sorted(occupied) != list(range(1, 10)):
+            raise ConfigError("validation seasons must partition valid start months 1-9")
+        if not 0.0 < self.optical_severe_limit < self.optical_high_completeness < 1.0:
+            raise ConfigError("validation optical completeness cutoffs are invalid")
+        if not 0.0 < self.similarity_holdout_fraction <= 1.0:
+            raise ConfigError("validation similarity holdout fraction must be in (0, 1]")
+        if (
+            min(
+                self.similarity_holdout_min_samples,
+                self.cluster_min_size,
+            )
+            < 1
+        ):
+            raise ConfigError("validation diagnostic sizes must be positive")
+        if self.cluster_n_clusters < 2:
+            raise ConfigError("validation cluster count must be at least two")
+
+    @property
+    def threshold(self) -> float:
+        """Expose the immutable threshold under the Phase 4 public name."""
+
+        return self.fixed_threshold
 
 
 @dataclass(frozen=True, slots=True)
@@ -217,6 +323,35 @@ def _positive_float(value: object, key: str) -> float:
     return result
 
 
+def _non_negative_float(value: object, key: str) -> float:
+    if not isinstance(value, int | float) or isinstance(value, bool):
+        raise ConfigError(f"configuration key '{key}' must be numeric")
+    result = float(value)
+    if not np.isfinite(result) or result < 0.0:
+        raise ConfigError(f"configuration key '{key}' must be finite and >= 0")
+    return result
+
+
+def _seasons(value: object) -> tuple[SeasonDefinition, ...]:
+    mapping = _mapping(value, "validation.seasons")
+    seasons: list[SeasonDefinition] = []
+    occupied: set[int] = set()
+    for name, raw_months in mapping.items():
+        if not isinstance(raw_months, list) or any(
+            not isinstance(month, int) or isinstance(month, bool) for month in raw_months
+        ):
+            raise ConfigError("validation.seasons values must be lists of integer months")
+        season = SeasonDefinition(_string(name, "validation.seasons name"), tuple(raw_months))
+        overlap = occupied.intersection(season.start_months)
+        if overlap:
+            raise ConfigError(f"validation.seasons overlap on start months: {sorted(overlap)}")
+        occupied.update(season.start_months)
+        seasons.append(season)
+    if occupied != set(range(1, 10)):
+        raise ConfigError("validation.seasons must partition valid start months 1-9")
+    return tuple(seasons)
+
+
 def _window_lengths(value: object, key: str) -> tuple[int, ...]:
     if not isinstance(value, list) or any(
         not isinstance(item, int) or isinstance(item, bool) for item in value
@@ -316,16 +451,32 @@ def load_project_config(config_path: str | Path) -> ProjectConfig:
         project_root,
     )
 
+    threshold_value = validation.get(
+        "threshold",
+        validation.get("fixed_threshold", FIXED_THRESHOLD),
+    )
+    if (
+        "threshold" in validation
+        and "fixed_threshold" in validation
+        and float(validation["threshold"]) != float(validation["fixed_threshold"])
+    ):
+        raise ConfigError("validation.threshold and fixed_threshold must agree")
+    robust_raw = _optional_mapping(validation, "robust_score_weights")
+    seasons_value = validation.get(
+        "seasons",
+        {season.name: list(season.start_months) for season in DEFAULT_SEASONS},
+    )
     validation_config = ValidationConfig(
         strategy=_string(
             validation.get("strategy", "stratified_group_kfold"),
             "validation.strategy",
         ),
+        seed=_positive_integer(validation.get("seed", 2026), "validation.seed", minimum=0),
         n_splits=_positive_integer(validation.get("n_splits", 5), "validation.n_splits", minimum=2),
         n_repeats=_positive_integer(validation.get("n_repeats", 3), "validation.n_repeats"),
         fixed_threshold=_probability(
-            validation.get("fixed_threshold", FIXED_THRESHOLD),
-            "validation.fixed_threshold",
+            threshold_value,
+            "validation.threshold",
         ),
         window_lengths=_window_lengths(
             validation.get("window_lengths", [4, 5, 6]),
@@ -335,13 +486,106 @@ def load_project_config(config_path: str | Path) -> ProjectConfig:
             validation.get("split_before_augmentation", True),
             "validation.split_before_augmentation",
         ),
+        primary_window_mode=_string(
+            validation.get("primary_window_mode", "sampled"),
+            "validation.primary_window_mode",
+        ),
+        sampled_windows_per_original=_positive_integer(
+            validation.get("sampled_windows_per_original", 8),
+            "validation.sampled_windows_per_original",
+        ),
+        validation_window_seed=_positive_integer(
+            validation.get("validation_window_seed", 2027),
+            "validation.validation_window_seed",
+            minimum=0,
+        ),
+        aggregation_method=_string(
+            validation.get("aggregation_method", "mean"),
+            "validation.aggregation_method",
+        ),
+        trimmed_mean_fraction=_probability(
+            validation.get("trimmed_mean_fraction", 0.10),
+            "validation.trimmed_mean_fraction",
+        ),
+        seasons=_seasons(seasons_value),
+        optical_severe_limit=_probability(
+            validation.get("optical_severe_limit", 0.50),
+            "validation.optical_severe_limit",
+        ),
+        optical_high_completeness=_probability(
+            validation.get("optical_high_completeness", 0.80),
+            "validation.optical_high_completeness",
+        ),
+        robust_score_weights=RobustScoreWeights(
+            mean_combined=_non_negative_float(
+                robust_raw.get("mean_combined", 0.50),
+                "validation.robust_score_weights.mean_combined",
+            ),
+            worst_fold=_non_negative_float(
+                robust_raw.get("worst_fold", 0.20),
+                "validation.robust_score_weights.worst_fold",
+            ),
+            worst_window_length=_non_negative_float(
+                robust_raw.get("worst_window_length", 0.15),
+                "validation.robust_score_weights.worst_window_length",
+            ),
+            worst_season=_non_negative_float(
+                robust_raw.get("worst_season", 0.15),
+                "validation.robust_score_weights.worst_season",
+            ),
+        ),
+        exhaustive_stress_enabled=_boolean(
+            validation.get("exhaustive_stress_enabled", False),
+            "validation.exhaustive_stress_enabled",
+        ),
+        reference_estimator_enabled=_boolean(
+            validation.get("reference_estimator_enabled", True),
+            "validation.reference_estimator_enabled",
+        ),
+        similarity_holdout_fraction=_probability(
+            validation.get("similarity_holdout_fraction", 0.20),
+            "validation.similarity_holdout_fraction",
+        ),
+        similarity_holdout_min_samples=_positive_integer(
+            validation.get("similarity_holdout_min_samples", 100),
+            "validation.similarity_holdout_min_samples",
+        ),
+        cluster_n_clusters=_positive_integer(
+            validation.get("cluster_n_clusters", 5),
+            "validation.cluster_n_clusters",
+            minimum=2,
+        ),
+        cluster_min_size=_positive_integer(
+            validation.get("cluster_min_size", 100),
+            "validation.cluster_min_size",
+        ),
     )
     if validation_config.strategy != "stratified_group_kfold":
         raise ConfigError("validation.strategy must be 'stratified_group_kfold'")
     if validation_config.fixed_threshold != FIXED_THRESHOLD:
-        raise ConfigError(f"validation.fixed_threshold must remain {FIXED_THRESHOLD}")
+        raise ConfigError(f"validation.threshold must remain exactly {FIXED_THRESHOLD}")
     if not validation_config.split_before_augmentation:
         raise ConfigError("validation.split_before_augmentation must remain true")
+    if validation_config.primary_window_mode != "sampled":
+        raise ConfigError("validation.primary_window_mode must remain 'sampled'")
+    if validation_config.aggregation_method not in {
+        "mean",
+        "median",
+        "logit_mean",
+        "trimmed_mean",
+    }:
+        raise ConfigError("validation.aggregation_method is unsupported")
+    if not 0.0 <= validation_config.trimmed_mean_fraction < 0.5:
+        raise ConfigError("validation.trimmed_mean_fraction must be in [0, 0.5)")
+    if not (
+        0.0
+        < validation_config.optical_severe_limit
+        < validation_config.optical_high_completeness
+        < 1.0
+    ):
+        raise ConfigError(
+            "validation optical completeness cutoffs must satisfy 0 < severe < high < 1"
+        )
 
     window_config = WindowGenerationConfig(
         enabled=_boolean(augmentation.get("enabled", False), "augmentation.enabled"),

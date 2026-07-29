@@ -15,11 +15,34 @@ data:
 
 validation:
   strategy: stratified_group_kfold
+  seed: 2026
   n_splits: 5
   n_repeats: 3
-  fixed_threshold: 0.5
+  threshold: 0.5
   window_lengths: [4, 5, 6]
   split_before_augmentation: true
+  primary_window_mode: sampled
+  sampled_windows_per_original: 8
+  validation_window_seed: 2027
+  aggregation_method: mean
+  trimmed_mean_fraction: 0.10
+  seasons:
+    early_year: [1, 2, 3]
+    mid_year: [4, 5, 6]
+    late_year: [7, 8, 9]
+  optical_severe_limit: 0.50
+  optical_high_completeness: 0.80
+  robust_score_weights:
+    mean_combined: 0.50
+    worst_fold: 0.20
+    worst_window_length: 0.15
+    worst_season: 0.15
+  exhaustive_stress_enabled: false
+  reference_estimator_enabled: true
+  similarity_holdout_fraction: 0.20
+  similarity_holdout_min_samples: 100
+  cluster_n_clusters: 5
+  cluster_min_size: 100
 
 augmentation:
   enabled: true

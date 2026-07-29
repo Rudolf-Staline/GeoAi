@@ -189,3 +189,85 @@ ruff format --check .
 The exact next task unblocked is Phase 4: implement the fixed repeated stratified grouped and
 stress-validation framework, using persistent original-row folds and these immutable feature
 schemas. No model training has occurred yet.
+
+## phase-04-authoritative-validation — accepted
+
+| Field | Result |
+|---|---|
+| Hypothesis | Fixed original-row folds plus a model-independent test-mask window panel can produce comparable OOF and temporal-stress evidence without duplicated-window inflation or fitted-preprocessor leakage. |
+| Representation | Repeated original fold manifest; fixed sampled window manifest; original- and window-level OOF contracts; temporal slices and stability tables. |
+| Model and parameters | One noncompetitive integration reference only: 16 predefined Phase 3 aggregates/metadata features, fold-local median imputation and standardization, untuned logistic regression (`C=1`, `liblinear`, `max_iter=500`). |
+| Validation setup | 5 stratified grouped folds x 3 repeats; seed `2026`; eight fixed test-mask-derived windows per original/repeat using window seed `2027`; original-level mean probability; threshold `0.5`. |
+| Reference F1 / ROC-AUC / combined score | `0.926808` / `0.979065` / `0.947711` mean across repeats. This verifies integration and is not a Phase 5 baseline or tuned result. |
+| Robust / worst fold / worst repeat | `0.936647` / `0.910596` / `0.947181`; repeat combined-score standard deviation `0.000511`. |
+| Reference score by window length | 4: `0.939364`; 5: `0.939846`; 6: `0.942795`. |
+| Reference score by start-month season | early (starts 1–3): `0.940844`; middle (4–6): `0.937560`; late (7–9): `0.931783`. Two-plus optical-gap score: `0.945532`. |
+| Runtime | 102.720 seconds inside the command (105.82 seconds wall); 77.185 seconds reference execution; 253.934 MiB peak RSS on the local CPU environment. |
+| Artifacts | Ignored files under `artifacts/validation/`: fold/window/season manifests, fingerprints, reference original/window OOF, fold/repeat/slice metrics, stability, protocol, Markdown report, and run provenance. |
+| Decision | Accept. Structural leakage checks, exact metrics, complete OOF linkage, deterministic fingerprints, fixed stress views, and fold-local reference execution all pass. |
+
+### Fixed manifest facts
+
+- The fold manifest has 5,463 rows: one for each of 1,821 originals in each of three repeats.
+  Validation folds contain 364 or 365 originals and exactly 147 positives; positive rates range
+  from 0.402740 to 0.403846. Its accepted fingerprint is
+  `4dbc9029f242c5ff4f8d2e23b0fb0d83334d993c1a4ecd7ce95e8e18c37ceece`.
+- The primary validation manifest has 43,704 rows, exactly 14,568 per repeat and eight views per
+  original. Each repeat contains 4,938 / 4,859 / 4,771 windows of lengths 4 / 5 / 6. All 78
+  deduplicated Phase 2 test availability patterns occur. Its accepted fingerprint is
+  `89ef5e9a108a4cad09582db82ce1970dbf4873cbb3b01692c96a8fcc54b14492`.
+- Across all repeats, internal optical-gap counts are 32,373 / 9,618 / 1,524 / 189 for 0 / 1 /
+  2 / 3 gaps. The same window panel is reused across repeats so repeat variation reflects fold
+  assignment rather than newly sampled masks.
+- Original-level reference OOF contains exactly 5,463 rows; window-level OOF contains 43,704.
+  The OOF fingerprint is
+  `8934e8b6dc7580cba1cbf1b0176bd354dcf5f8dfe37e29f2bb1f3776faf3804e`.
+
+### Scientific and engineering decisions
+
+- Official F1, ROC-AUC, and combined score are calculated only after fixed mean aggregation to
+  one prediction per original/repeat. Window scores remain diagnostic. Probability `0.5` is
+  classified positive; configuration values other than `0.5` fail.
+- The robust score keeps the official score separate and adds fixed penalties through worst fold,
+  worst window length, and worst configured season. All components are original-level combined
+  scores and weights are fixed in `configs/base.yaml`.
+- Leave-season-out definitions are materialized now, while cluster fitting is deferred to the
+  future outer-fold model runner because scaling and clustering must be fitted inside that scope.
+  The adversarial holdout accepts only future per-original OOF train-vs-test similarity scores.
+- A small Phase 2 implementation refactor preallocates window arrays and reuses the identical
+  sampled panel across repeat assignments. Fingerprints and all Phase 2 scientific definitions
+  are unchanged; this lowers Phase 4 memory without changing values, masks, or IDs.
+
+### Limitations and rejected scope
+
+- The season names describe start-month groups, not a proven local aquaculture phenology. No
+  spatial or geographic holdout is possible because the supplied rows expose no documented
+  grouping coordinates.
+- Cluster robustness execution and adversarially selected holdout scores are deferred until a
+  fold-local Phase 5 representation and Phase 7 OOF domain probabilities exist. No test feature
+  values enter fold construction, and domain scores can never become pond-model features.
+- The reference result must not be used as evidence that logistic regression is the selected
+  competition model. CatBoost, LightGBM, tuning, calibration, ensembling, neural models, domain
+  adaptation, test predictions, and submission generation remain outside Phase 4.
+
+### Commands
+
+```bash
+python scripts/audit_data.py --config configs/base.yaml
+python scripts/generate_windows.py --config configs/base.yaml
+python scripts/build_features.py --config configs/base.yaml
+python scripts/build_validation.py --config configs/base.yaml
+python scripts/build_validation.py --config configs/base.yaml --skip-reference \
+  --output-dir artifacts/validation_repro_a
+python scripts/build_validation.py --config configs/base.yaml --skip-reference \
+  --output-dir artifacts/validation_repro_b
+python scripts/build_validation.py --config configs/base.yaml --skip-reference --seed 2027 \
+  --output-dir artifacts/validation_seed_2027
+python -m compileall src tests
+pytest
+ruff check .
+ruff format --check .
+```
+
+The exact next unblocked task is Phase 5: run manually configured CatBoost and LightGBM tabular
+baselines against these immutable fold/window fingerprints and original-level OOF/robust metrics.

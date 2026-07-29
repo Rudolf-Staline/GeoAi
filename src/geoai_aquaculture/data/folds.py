@@ -124,7 +124,9 @@ def assert_no_fold_leakage(window_manifest: pd.DataFrame) -> None:
         raise FoldAssignmentError("window leakage columns must not contain missing values")
     if window_manifest["window_id"].duplicated().any():
         raise FoldAssignmentError("window_id values must be unique")
-    fold_counts = window_manifest.groupby("original_id", sort=False)["fold"].nunique()
+    fold_counts = window_manifest.groupby("original_id", sort=False, observed=True)[
+        "fold"
+    ].nunique()
     leaking_ids = fold_counts[fold_counts != 1]
     if not leaking_ids.empty:
         raise FoldAssignmentError(

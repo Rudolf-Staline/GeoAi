@@ -145,7 +145,7 @@ class TemporalWindowDataset:
         return self.manifest.shape[0]
 
 
-def _stable_window_id(
+def stable_window_id(
     *,
     original_id: str,
     fold: int,
@@ -299,13 +299,20 @@ def generate_temporal_windows(
     optical_index = {band: index for index, band in enumerate(optical_bands)}
     source_values = _raw_value_cube(data.train, data)
 
+    views_per_row = (
+        len(candidates) if generation.exhaustive_windows else generation.windows_per_sample
+    )
+    total_views = data.train.shape[0] * views_per_row
     manifests: list[dict[str, object]] = []
-    value_views: list[np.ndarray] = []
-    month_views: list[np.ndarray] = []
-    relative_views: list[np.ndarray] = []
-    position_views: list[np.ndarray] = []
-    radar_views: list[np.ndarray] = []
-    optical_views: list[np.ndarray] = []
+    value_views = np.full(
+        (total_views, MAX_WINDOW_LENGTH, len(band_names)), np.nan, dtype=np.float64
+    )
+    month_views = np.zeros((total_views, MAX_WINDOW_LENGTH), dtype=np.int8)
+    relative_views = np.zeros((total_views, MAX_WINDOW_LENGTH), dtype=np.int8)
+    position_views = np.zeros((total_views, MAX_WINDOW_LENGTH), dtype=bool)
+    radar_views = np.zeros((total_views, MAX_WINDOW_LENGTH), dtype=bool)
+    optical_views = np.zeros((total_views, MAX_WINDOW_LENGTH, len(optical_bands)), dtype=bool)
+    output_index = 0
 
     for row_index in range(data.train.shape[0]):
         fold_row = fold_manifest.iloc[row_index]
@@ -355,7 +362,7 @@ def generate_temporal_windows(
                 )
                 optical_mask[optical_dropout, :] = False
 
-            values = np.full((MAX_WINDOW_LENGTH, len(band_names)), np.nan, dtype=np.float64)
+            values = value_views[output_index]
             values[: window.window_length, :] = source_values[
                 row_index, window.window_start - 1 : window.window_end, :
             ]
@@ -368,7 +375,7 @@ def generate_temporal_windows(
             internal_optical_gaps = radar_mask & position_mask & ~optical_month_mask
             radar_pattern = _bit_string(radar_mask)
             optical_pattern = _optical_bit_string(optical_mask)
-            window_id = _stable_window_id(
+            window_id = stable_window_id(
                 original_id=original_id,
                 fold=fold,
                 generation_mode=generation.mode,
@@ -410,21 +417,24 @@ def generate_temporal_windows(
                     "source_mask_frequency": source_mask_frequency,
                 }
             )
-            value_views.append(values)
-            month_views.append(calendar_months)
-            relative_views.append(relative_positions)
-            position_views.append(position_mask)
-            radar_views.append(radar_mask)
-            optical_views.append(optical_mask)
+            month_views[output_index] = calendar_months
+            relative_views[output_index] = relative_positions
+            position_views[output_index] = position_mask
+            radar_views[output_index] = radar_mask
+            optical_views[output_index] = optical_mask
+            output_index += 1
+
+    if output_index != total_views:
+        raise TemporalWindowError("preallocated temporal-view count was not filled exactly")
 
     dataset = TemporalWindowDataset(
         manifest=pd.DataFrame(manifests),
-        values=np.stack(value_views),
-        calendar_months=np.stack(month_views),
-        relative_positions=np.stack(relative_views),
-        position_mask=np.stack(position_views),
-        radar_mask=np.stack(radar_views),
-        optical_mask=np.stack(optical_views),
+        values=value_views,
+        calendar_months=month_views,
+        relative_positions=relative_views,
+        position_mask=position_views,
+        radar_mask=radar_views,
+        optical_mask=optical_views,
         band_names=band_names,
         optical_bands=optical_bands,
     )
@@ -482,7 +492,7 @@ def materialize_test_windows(data: CompetitionData) -> TemporalWindowDataset:
         original_id = str(data.test.iloc[row_index][data.config.data.id_column])
         radar_pattern = _bit_string(radar_mask)
         optical_pattern = _optical_bit_string(optical_mask)
-        window_id = _stable_window_id(
+        window_id = stable_window_id(
             original_id=original_id,
             fold=-1,
             generation_mode="observed_test",

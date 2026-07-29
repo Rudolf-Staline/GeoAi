@@ -88,6 +88,35 @@ The default real-data schema has 688 tabular features and sequence arrays with 8
 10 raw optical channels, 14 optical-index channels, 2 cyclic month channels, and a maximum length
 of 6.
 
+## Phase 4 authoritative validation
+
+Build the fixed repeated folds, reusable validation-window manifest, stress definitions, and the
+untuned integration reference:
+
+```bash
+python scripts/build_validation.py --config configs/base.yaml
+```
+
+The protocol splits the 1,821 original rows into five stratified folds for each of three repeats
+using validation seed `2026`. It attaches one deterministic panel of eight test-mask-derived
+windows per original and repeat. Every future model must reuse the resulting fold and window
+fingerprints; model-specific folds or regenerated validation masks are rejected.
+Later runners load them through `load_fold_manifest` and `load_validation_window_manifest`, which
+restore scientific dtypes and verify expected fingerprints before training.
+Stored original/window OOF tables are revalidated together through `load_oof_predictions`.
+
+Window probabilities are averaged to exactly one probability per original and repeat before
+official metrics are computed. The classification threshold remains exactly `0.5`. Stress
+reports cover lengths 4/5/6, start month, configured start-month seasons, optical
+gaps/completeness, radar/optical availability, and across-window prediction stability. The
+separate robust selection score in `docs/experiment_protocol.md` is not the official metric.
+
+Use `--skip-reference` to create structural manifests only and `--include-exhaustive` to add the
+24-window stress-view fingerprint. Generated manifests, OOF predictions, and reports are written
+under `artifacts/validation/` and remain ignored by Git. The logistic reference exists only to
+prove fold-local preprocessing, prediction aggregation, OOF storage, and reporting end to end; it
+is not a Phase 5 competition baseline.
+
 ## Repository map
 
 ```text
