@@ -119,7 +119,7 @@ __all__ = [
 ]
 
 try:
-    from .temporal import (
+    from .temporal import (  # noqa: F401
         ChannelStatistics,
         PreparedTemporalData,
         SameOriginalPairMap,
