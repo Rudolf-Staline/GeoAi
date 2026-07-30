@@ -203,7 +203,7 @@ def test_domain_dataset_rejects_raw_id_feature_flag() -> None:
     dataset = _domain_dataset()
     metadata = dataset.metadata.copy()
     metadata.loc[0, "raw_id_exposed_as_feature"] = True
-    with pytest.raises(Exception, match="Raw IDs|raw IDs"):
+    with pytest.raises(Exception, match=r"Raw IDs|raw IDs"):
         DomainDataset(
             representation=dataset.representation,
             features=dataset.features,
