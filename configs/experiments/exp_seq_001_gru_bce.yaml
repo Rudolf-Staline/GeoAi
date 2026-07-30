@@ -1,0 +1,30 @@
+experiment:
+  id: EXP-SEQ-001-GRU-BCE
+  hypothesis: A compact availability-aware GRU may capture short-window dynamics not represented by tree aggregates while remaining stable under missing optical months.
+  objective: bce
+  consistency_lambda: 0.0
+  seed: 6101
+  allowed_stages: [smoke, screen, full]
+  threshold: 0.5
+  architecture:
+    sensor_projection_dim: 24
+    index_projection_dim: 16
+    hidden_dim: 64
+    num_layers: 1
+    dropout: 0.15
+  training:
+    max_epochs: 45
+    smoke_epochs: 2
+    batch_size: 256
+    learning_rate: 0.001
+    weight_decay: 0.0001
+    patience: 7
+    gradient_clip: 1.0
+    input_clip: 8.0
+    cpu_threads: 4
+  viability:
+    best_tree_robust_score: 0.980404
+    full_score_tolerance: 0.003
+    blend_improvement: 0.0005
+    screening_reference_robust: 0.980836
+    screening_max_gap: 0.010

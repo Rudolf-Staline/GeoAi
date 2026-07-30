@@ -462,3 +462,107 @@ ruff format --check .
 The exact next unblocked task is Phase 6: compare a compact masked temporal model against the
 retained Phase 5 candidates using these same fold/window manifests, original-level OOF contract,
 and robust selection criterion. Phase 5 stops here.
+
+## Phase 6 — Compact masked temporal viability
+
+**Status:** accepted. The compact temporal branch passed the predeclared standalone and blend
+viability gates. No Transformer, second encoder family, external pretraining, threshold tuning,
+or domain adaptation was introduced.
+
+### Architecture and protocol
+
+`EXP-SEQ-001-GRU-BCE` uses separate radar (8 channels), optical (10 channels), and optical-index
+(14 channels) projections, an availability-aware radar/optical gate, cyclic absolute month,
+relative position, explicit sensor masks, one 64-unit GRU layer, masked mean pooling, and a small
+classification head. It contains exactly 26,329 trainable parameters. Padding, radar absence,
+optical absence, and per-band missingness remain distinct.
+
+All normalization is fitted on the current fold's training windows only. Each original contributes
+equal total loss weight across its eight views. The run reused fold fingerprint
+`4dbc9029f242c5ff4f8d2e23b0fb0d83334d993c1a4ecd7ce95e8e18c37ceece` and validation-window
+fingerprint `89ef5e9a108a4cad09582db82ce1970dbf4873cbb3b01692c96a8fcc54b14492`.
+Window probabilities are averaged to exactly 5,463 original/repeat OOF rows before scoring.
+
+### Staged results
+
+| Experiment | Stage | F1 | ROC-AUC | Combined | Robust | Worst fold | Decision |
+|---|---|---:|---:|---:|---:|---:|---|
+| EXP-SEQ-001-GRU-BCE | smoke, 1 fold / 2 epochs | 0.948805 | 0.983649 | 0.962743 | 0.958420 | — | Engineering chain passed. |
+| EXP-SEQ-001-GRU-BCE | screen, repeat 0 | 0.978694 | 0.996566 | 0.985843 | 0.982327 | 0.980376 | Promote. |
+| EXP-SEQ-002-GRU-CONSISTENCY (`lambda=0.1`) | screen, repeat 0 | 0.978022 | 0.996232 | 0.985306 | 0.980744 | 0.975605 | Reject: slower and weaker than BCE. |
+| EXP-SEQ-001-GRU-BCE | full, 15 folds | 0.979209 | 0.996965 | 0.986311 | 0.981208 | 0.974172 | Retain: robust winner. |
+
+The full BCE run improves the former best single LightGBM by `+0.000089` combined,
+`+0.000804` robust, `+0.001580` worst-fold score, `-0.001515` log loss, and `-0.000345` Brier
+score. Repeat combined-score standard deviation is `0.000333`. Total runtime was 308.69 seconds
+on CPU with four threads; fold training totalled 257.61 seconds and peak RSS was 537.31 MiB.
+Median best epoch was 23.
+
+### Stress results
+
+| Slice | Combined score |
+|---|---:|
+| 4 months | 0.978934 |
+| 5 months | 0.985144 |
+| 6 months | 0.984023 |
+| Early season | 0.981636 |
+| Mid season | 0.982662 |
+| Late season | 0.975854 |
+| No optical gaps | 0.986532 |
+| One optical gap | 0.977580 |
+| Two or more optical gaps | 0.975594 |
+| Severely optical-limited | 0.944739 |
+| Start month 9 | 0.958014 |
+
+The known month-9 and severely optical-limited weaknesses remain. The temporal model improves the
+robust criterion without eliminating those domain-risk slices, so Phase 7 remains necessary.
+
+### Sensor ablation
+
+Mean original-level validation log loss across the 15 folds is `0.061961` for the complete model.
+Removing monthly indices raises it to `0.416356`; removing raw optical inputs raises it to
+`0.337012`; removing radar raises it to `0.159206`. Radar is weak standalone but contributes
+material conditional signal inside the fused temporal model.
+
+### OOF diversity and fixed blends
+
+The complete GRU and robust-winner LightGBM align on all 5,463 OOF rows. Their Pearson probability
+correlation is `0.990933`, Spearman correlation `0.887802`, residual correlation `0.870960`, and
+binary disagreement `0.010617`. Each model uniquely corrects 29 classifications made incorrectly
+by the other; 62 errors are shared.
+
+No blend weights were optimized. A fixed 50/50 blend reaches F1 `0.981493`, ROC-AUC `0.997225`,
+combined `0.987786`, and robust `0.981581`; this improves the best tree robust score by
+`0.001177` and the standalone temporal robust score by `0.000373`. A fixed 70% tree / 30%
+temporal blend scores `0.987080 / 0.981087` combined/robust. The 50/50 blend is retained as Phase
+8 evidence, not as a final selected submission model.
+
+### Decision and limitations
+
+Retain `EXP-SEQ-001-GRU-BCE` as the strongest standalone robust candidate and retain the
+predeclared 50/50 tree/temporal blend as the best current diagnostic combination. Reject the
+cross-window consistency objective after screening. Phase 6 makes no test predictions and no
+leaderboard claim. Tree OOF was regenerated from the exact committed Phase 5 configuration to
+measure temporal diversity because generated Phase 5 artifacts are intentionally ignored by Git.
+
+Commands:
+
+```bash
+python scripts/train_temporal.py --config configs/base.yaml \
+  --experiment configs/experiments/exp_seq_001_gru_bce.yaml --stage smoke --overwrite
+python scripts/train_temporal.py --config configs/base.yaml \
+  --experiment configs/experiments/exp_seq_001_gru_bce.yaml --stage screen --overwrite
+python scripts/train_temporal.py --config configs/base.yaml \
+  --experiment configs/experiments/exp_seq_001_gru_bce.yaml --stage full --overwrite
+python scripts/train_temporal.py --config configs/base.yaml \
+  --experiment configs/experiments/exp_seq_002_gru_consistency.yaml --stage screen --overwrite
+python scripts/analyze_temporal_diversity.py --config configs/base.yaml \
+  --temporal-artifact artifacts/experiments/EXP-SEQ-001-GRU-BCE \
+  --tree-artifact artifacts/experiments/EXP-TAB-003-LGB-FULL-UNIFORM \
+  --output-dir artifacts/experiments/phase6_selection
+```
+
+The exact next unblocked task is Phase 7: diagnose feature- and representation-level train/test
+domain shift, with special attention to `optical__ndwi__max`, month 9, and severely
+optical-limited windows. Adaptation remains optional and must improve the immutable robust label
+validation before retention.

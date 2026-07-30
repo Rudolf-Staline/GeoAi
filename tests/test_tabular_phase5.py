@@ -267,7 +267,7 @@ def test_experiment_config_rejects_threshold_and_stage_promotion(tmp_path: Path)
     with pytest.raises(ExperimentConfigError, match="not approved"):
         load_tabular_experiment_config(path).require_stage("full")
     path.write_text(restricted.replace("threshold: 0.5", "threshold: 0.49"), encoding="utf-8")
-    with pytest.raises(ExperimentConfigError, match="exactly 0.5"):
+    with pytest.raises(ExperimentConfigError, match=r"exactly 0\.5"):
         load_tabular_experiment_config(path)
 
 

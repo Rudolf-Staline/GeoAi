@@ -98,3 +98,22 @@ The diversity layer aligns candidate OOF one-to-one and reports correlations, di
 unique errors, slice overlap, and fixed 50/50 diagnostic blends. Mean aggregation linearity is
 used to cache stress views without changing Phase 4 metric formulas. It never optimizes ensemble
 weights; calibrated or optimized combination remains a Phase 8 responsibility.
+
+## Phase 6 temporal boundary
+
+`SensorGatedGRU` consumes the immutable Phase 3 sequence representation rather than rebuilding
+features. Radar, raw optical, and monthly-index channels receive separate fold-local masked
+normalization and projections. A sensor-availability-aware element-wise gate fuses radar and
+optical embeddings; explicit index, cyclic month, relative-position, radar-availability, and
+optical-availability channels enter a one-layer packed GRU. Right padding is excluded by packed
+sequence lengths and masked mean pooling.
+
+The accepted architecture has 26,329 trainable parameters and is CPU-compatible. Training uses
+one fixed view panel, equal total weight per original, binary cross-entropy, deterministic seeds,
+fold-local early stopping, gradient clipping, and exactly the Phase 4 OOF/metric contracts.
+Sensor ablation is diagnostic only. The single tested cross-window probability-consistency
+variant is isolated behind configuration and was rejected before authoritative confirmation.
+
+`temporal_diversity` aligns complete temporal and tree OOF tables one-to-one, reports residual and
+classification disagreement, and evaluates only predeclared fixed blends. It never tunes blend
+weights. The final accepted candidate and any final weight selection remain Phase 8 decisions.

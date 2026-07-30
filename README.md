@@ -169,3 +169,36 @@ tests/                   Unit and leakage-safety tests
 ```
 
 Read `AGENTS.md` before changing code. It is the authoritative scientific and engineering contract.
+
+## Phase 6 compact temporal viability
+
+Install the declared CPU PyTorch extra and run the availability-aware GRU against the immutable
+Phase 4 folds and validation windows:
+
+```bash
+pip install -e ".[dev,trees,deep]"
+python scripts/train_temporal.py \
+  --config configs/base.yaml \
+  --experiment configs/experiments/exp_seq_001_gru_bce.yaml \
+  --stage full
+```
+
+The runner rebuilds the Phase 3 `SequenceFeatureDataset`, fits radar/optical/index normalization
+inside each training fold, preserves sensor and padding masks, and emits the same 5,463-row
+original-level OOF contract as the tree models. `smoke`, `screen`, and `full` retain the fixed
+Phase 5 staged-compute meanings. The accepted compact GRU has 26,329 trainable parameters and
+uses masked mean pooling; the tested cross-window consistency variant was rejected at screening.
+
+Compare the complete temporal and strongest tree OOF artifacts with predeclared, non-optimized
+weights:
+
+```bash
+python scripts/analyze_temporal_diversity.py \
+  --config configs/base.yaml \
+  --temporal-artifact artifacts/experiments/EXP-SEQ-001-GRU-BCE \
+  --tree-artifact artifacts/experiments/EXP-TAB-003-LGB-FULL-UNIFORM \
+  --output-dir artifacts/experiments/phase6_selection
+```
+
+Phase 6 does not train final full-data models or generate test predictions. All checkpoints, OOF
+predictions, ablations, and blend diagnostics remain below ignored `artifacts/` paths.

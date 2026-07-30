@@ -201,7 +201,7 @@ def test_validation_config_locks_threshold_and_robust_policy() -> None:
             config.robust_score_weights.worst_season,
         )
     ) == pytest.approx(1.0)
-    with pytest.raises(ConfigError, match="exactly 0.5"):
+    with pytest.raises(ConfigError, match=r"exactly 0\.5"):
         replace(config, fixed_threshold=0.49)
     with pytest.raises(ConfigError, match="precede"):
         replace(config, split_before_augmentation=False)
@@ -269,7 +269,7 @@ def test_exact_metrics_use_point_five_and_explicit_single_class_auc() -> None:
     single = metric_result(np.ones(3), np.asarray([0.4, 0.6, 0.8]))
     assert single.roc_auc is None and single.combined_score is None
     assert single.auc_defined is False
-    with pytest.raises(ValueError, match="exactly 0.5"):
+    with pytest.raises(ValueError, match=r"exactly 0\.5"):
         metric_result(labels, probabilities, threshold=0.51)
 
 
