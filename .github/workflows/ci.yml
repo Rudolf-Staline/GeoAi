@@ -15,8 +15,13 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
-      - name: Install
-        run: python -m pip install -e ".[dev]"
+      - name: Install validated numerical stack
+        run: |
+          python -m pip install \
+            "numpy==2.3.5" \
+            "pandas==2.2.3" \
+            "scikit-learn==1.8.0"
+          python -m pip install -e ".[dev,trees]"
       - name: Ruff lint
         run: ruff check .
       - name: Ruff format
