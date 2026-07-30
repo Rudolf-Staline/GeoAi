@@ -45,19 +45,6 @@ from .tabular import (
     validate_full_oof_contract,
     validate_phase3_feature_contract,
 )
-from .temporal import (
-    ChannelStatistics,
-    PreparedTemporalData,
-    SameOriginalPairMap,
-    SequenceNormalizer,
-    TemporalFoldResult,
-    TemporalTrainingError,
-    TemporalTrainingResult,
-    execute_temporal_experiment,
-    prepare_temporal_experiment_data,
-    run_temporal_experiment,
-    write_temporal_experiment_artifacts,
-)
 from .temporal_config import (
     TemporalExperimentConfig,
     TemporalExperimentConfigError,
@@ -82,7 +69,6 @@ from .weights import (
 __all__ = [
     "AcceptedCandidateRegistry",
     "CandidateRecord",
-    "ChannelStatistics",
     "DiversityError",
     "ExperimentArtifactError",
     "ExperimentArtifactManifest",
@@ -94,20 +80,14 @@ __all__ = [
     "ModelProfile",
     "OOFDiversityReport",
     "PreparedTabularData",
-    "PreparedTemporalData",
-    "SameOriginalPairMap",
     "SampleWeightResult",
-    "SequenceNormalizer",
     "TabularExperimentConfig",
     "TabularTrainingError",
     "TabularTrainingResult",
     "TemporalDiversityError",
     "TemporalExperimentConfig",
     "TemporalExperimentConfigError",
-    "TemporalFoldResult",
     "TemporalTrainingConfig",
-    "TemporalTrainingError",
-    "TemporalTrainingResult",
     "TemporalTreeDiversityReport",
     "TemporalViabilityGates",
     "WeightingError",
@@ -118,7 +98,6 @@ __all__ = [
     "blend_oof_predictions",
     "build_window_sample_weights",
     "execute_tabular_experiment",
-    "execute_temporal_experiment",
     "experiment_artifact_dir",
     "load_accepted_candidate_registry",
     "load_candidate_oof",
@@ -128,16 +107,47 @@ __all__ = [
     "pairwise_oof_summary",
     "prepare_experiment_artifact_dir",
     "prepare_tabular_experiment_data",
-    "prepare_temporal_experiment_data",
     "run_tabular_experiment",
     "run_tabular_fold",
-    "run_temporal_experiment",
     "stage_repeat_folds",
     "summarize_feature_importance",
     "validate_full_oof_contract",
     "validate_phase3_feature_contract",
     "write_oof_diversity_artifacts",
     "write_tabular_experiment_artifacts",
-    "write_temporal_experiment_artifacts",
     "write_temporal_tree_diversity",
 ]
+
+try:
+    from .temporal import (
+        ChannelStatistics,
+        PreparedTemporalData,
+        SameOriginalPairMap,
+        SequenceNormalizer,
+        TemporalFoldResult,
+        TemporalTrainingError,
+        TemporalTrainingResult,
+        execute_temporal_experiment,
+        prepare_temporal_experiment_data,
+        run_temporal_experiment,
+        write_temporal_experiment_artifacts,
+    )
+except ModuleNotFoundError as exc:
+    if exc.name != "torch":
+        raise
+else:
+    __all__.extend(
+        [
+            "ChannelStatistics",
+            "PreparedTemporalData",
+            "SameOriginalPairMap",
+            "SequenceNormalizer",
+            "TemporalFoldResult",
+            "TemporalTrainingError",
+            "TemporalTrainingResult",
+            "execute_temporal_experiment",
+            "prepare_temporal_experiment_data",
+            "run_temporal_experiment",
+            "write_temporal_experiment_artifacts",
+        ]
+    )
