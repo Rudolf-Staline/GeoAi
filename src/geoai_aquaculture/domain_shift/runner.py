@@ -77,9 +77,7 @@ def _modified_domain_dataset(
         groups=dataset.groups.copy(),
         entity_ids=dataset.entity_ids.copy(),
         sample_weights=dataset.sample_weights.copy(),
-        feature_groups=MappingProxyType(
-            {name: tuple(values) for name, values in groups.items()}
-        ),
+        feature_groups=MappingProxyType({name: tuple(values) for name, values in groups.items()}),
         schema_fingerprint=digest.hexdigest(),
         fingerprint=digest.hexdigest(),
     )
@@ -154,8 +152,10 @@ def _adaptation_decision(
     reference = baseline_oof.sort_values(["repeat", "original_id"], kind="stable")
     for result in results:
         candidate = result.oof.original.sort_values(["repeat", "original_id"], kind="stable")
-        if not reference[["repeat", "original_id"]].reset_index(drop=True).equals(
-            candidate[["repeat", "original_id"]].reset_index(drop=True)
+        if (
+            not reference[["repeat", "original_id"]]
+            .reset_index(drop=True)
+            .equals(candidate[["repeat", "original_id"]].reset_index(drop=True))
         ):
             raise ValueError("adaptation and baseline OOF rows do not align")
         reference_probability = reference["probability"].to_numpy(dtype=np.float64)

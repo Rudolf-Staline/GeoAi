@@ -70,9 +70,7 @@ def grouped_feature_importance(
         .sort_values("total_mean_importance", ascending=False, ignore_index=True)
     )
     total = float(grouped["total_mean_importance"].sum())
-    grouped["importance_share"] = (
-        grouped["total_mean_importance"] / total if total > 0.0 else 0.0
-    )
+    grouped["importance_share"] = grouped["total_mean_importance"] / total if total > 0.0 else 0.0
     return feature, grouped
 
 
@@ -104,9 +102,9 @@ def feature_shift_table(
     frame = dataset.features.loc[:, list(top)].copy()
     frame.insert(0, "source", dataset.metadata["source"].to_numpy())
     frame.insert(1, "entity_id", dataset.entity_ids)
-    entity = frame.groupby(
-        ["source", "entity_id"], observed=True, as_index=False
-    ).mean(numeric_only=True)
+    entity = frame.groupby(["source", "entity_id"], observed=True, as_index=False).mean(
+        numeric_only=True
+    )
     records: list[dict[str, float | str]] = []
     for name in top:
         train_all = entity.loc[entity["source"].eq("train"), name].to_numpy(dtype=np.float64)

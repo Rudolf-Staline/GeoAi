@@ -1,1 +1,0 @@
-Trigger the one-time Ruff 0.16 formatter for Phase 7.
