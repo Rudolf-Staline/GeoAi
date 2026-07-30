@@ -1,1 +1,1 @@
-Trigger final formatting workflow.
+Trigger final formatting workflow after PR synchronization.
