@@ -1,0 +1,31 @@
+phase7:
+  seed: 7201
+  n_splits: 5
+  representations: [relative, invariant, full, radar, optical]
+  selection_representation: full
+  top_feature_count: 30
+  removal_feature_count: 10
+  similarity_holdout_fraction: 0.20
+  similarity_holdout_minimum: 100
+  adaptation_seeds: [7201, 17208]
+  adaptation_methods: [feature_removal, importance_weighting]
+  label_baseline_config: configs/experiments/exp_tab_003_full_lgb_uniform.yaml
+  tree_oof_artifact: artifacts/experiments/EXP-TAB-003-LGB-FULL-UNIFORM/oof_predictions.csv
+  temporal_oof_artifact: artifacts/experiments/EXP-SEQ-001-GRU-BCE/oof_predictions.csv
+  output_dir: artifacts/domain_shift
+  importance_weight_clip: [0.5, 2.0]
+  domain_model:
+    early_stopping_rounds: 50
+    parameters:
+      objective: binary
+      n_estimators: 400
+      learning_rate: 0.04
+      num_leaves: 31
+      max_depth: -1
+      min_child_samples: 40
+      colsample_bytree: 0.85
+      subsample: 0.90
+      subsample_freq: 1
+      reg_alpha: 0.2
+      reg_lambda: 2.0
+      max_bin: 127

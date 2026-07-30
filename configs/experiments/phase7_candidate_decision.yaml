@@ -1,0 +1,19 @@
+phase7_decision:
+  retained:
+    - experiment_id: EXP-TAB-003-LGB-FULL-UNIFORM
+      role: strongest retained tree baseline
+    - experiment_id: EXP-SEQ-001-GRU-BCE
+      role: strongest standalone robust candidate
+    - experiment_id: PHASE6-FIXED-50-50-LGB-GRU
+      role: fixed diagnostic blend evidence for Phase 8
+  rejected:
+    - method: feature_removal
+      seeds: [7201, 17208]
+      mean_robust_score: 0.9804749786046847
+      reason: negligible robust gain, no reduction in domain ROC-AUC, and near-perfect redundancy
+    - method: importance_weighting
+      seeds: [7201, 17208]
+      mean_robust_score: 0.9792352211682984
+      reason: lower robust score, weaker worst folds and seasons, and no useful diversity
+  immutable_threshold: 0.5
+  selection_basis: fixed Phase 4 robust score plus test-like holdout and OOF diversity
