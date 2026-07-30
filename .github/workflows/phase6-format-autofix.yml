@@ -24,6 +24,7 @@ jobs:
           git apply .github/phase6-format-followup.patch
           rm .github/phase6-format.patch
           rm .github/phase6-format-followup.patch
+          rm .github/phase6-format-trigger.txt
           rm .github/workflows/phase6-format-autofix.yml
       - name: Commit formatted files
         run: |
