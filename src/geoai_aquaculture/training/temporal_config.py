@@ -262,14 +262,10 @@ def load_temporal_experiment_config(path: str | Path) -> TemporalExperimentConfi
         "hypothesis": str(experiment.get("hypothesis", "")).strip(),
         "objective": str(experiment.get("objective", "bce")),
         "architecture": dict(architecture),
-        "training": training.__dict__ if hasattr(training, "__dict__") else {
-            field: getattr(training, field)
-            for field in training.__dataclass_fields__
-        },
-        "viability": {
-            field: getattr(viability, field)
-            for field in viability.__dataclass_fields__
-        },
+        "training": training.__dict__
+        if hasattr(training, "__dict__")
+        else {field: getattr(training, field) for field in training.__dataclass_fields__},
+        "viability": {field: getattr(viability, field) for field in viability.__dataclass_fields__},
         "consistency_lambda": float(experiment.get("consistency_lambda", 0.0)),
         "seed": _positive_int(experiment.get("seed", 6101), "experiment.seed", minimum=0),
         "allowed_stages": allowed,

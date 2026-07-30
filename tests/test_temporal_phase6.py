@@ -68,9 +68,7 @@ def _sequence() -> SequenceFeatureDataset:
     radar, radar_features = values(8, radar_mask)
     optical, optical_features = values(10, optical_mask)
     indices, index_mask = values(14, optical_mask)
-    raw_band_mask = np.concatenate(
-        (radar_features[:, :, :2], optical_features), axis=2
-    )
+    raw_band_mask = np.concatenate((radar_features[:, :, :2], optical_features), axis=2)
     months = np.zeros((rows, time), dtype=np.int8)
     relative = np.zeros((rows, time), dtype=np.int8)
     month_encoding = np.full((rows, time, 2), np.nan, dtype=np.float64)

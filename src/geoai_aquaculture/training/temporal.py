@@ -120,9 +120,7 @@ class SequenceNormalizer:
             raise TemporalTrainingError("normalizer selector is empty or misaligned")
         return cls(
             radar=cls._fit_group(sequence.radar_values, sequence.radar_feature_mask, selector),
-            optical=cls._fit_group(
-                sequence.optical_values, sequence.optical_band_mask, selector
-            ),
+            optical=cls._fit_group(sequence.optical_values, sequence.optical_band_mask, selector),
             indices=cls._fit_group(sequence.monthly_indices, sequence.index_mask, selector),
             input_clip=float(input_clip),
         )
@@ -181,12 +179,10 @@ class SequenceNormalizer:
                     indices,
                 )
             ).to(device),
-            "radar_feature_mask": torch.from_numpy(
-                sequence.radar_feature_mask[indices]
-            ).to(device),
-            "optical_feature_mask": torch.from_numpy(
-                sequence.optical_band_mask[indices]
-            ).to(device),
+            "radar_feature_mask": torch.from_numpy(sequence.radar_feature_mask[indices]).to(device),
+            "optical_feature_mask": torch.from_numpy(sequence.optical_band_mask[indices]).to(
+                device
+            ),
             "index_mask": torch.from_numpy(sequence.index_mask[indices]).to(device),
             "radar_mask": torch.from_numpy(sequence.radar_mask[indices]).to(device),
             "optical_mask": torch.from_numpy(sequence.optical_mask[indices]).to(device),
@@ -504,9 +500,9 @@ def _train_fold_model(
     output_dir: Path,
 ) -> tuple[SensorGatedGRU, SequenceNormalizer, TemporalFoldResult, pd.DataFrame, pd.DataFrame]:
     sequence = prepared.sequence
-    manifest = prepared.windows.frame.loc[
-        prepared.windows.frame["repeat"].eq(repeat)
-    ].reset_index(drop=True)
+    manifest = prepared.windows.frame.loc[prepared.windows.frame["repeat"].eq(repeat)].reset_index(
+        drop=True
+    )
     valid_selector = manifest["fold"].to_numpy(dtype=np.int16) == fold
     train_selector = ~valid_selector
     train_indices = np.flatnonzero(train_selector)
@@ -591,9 +587,7 @@ def _train_fold_model(
             if not torch.isfinite(loss):
                 raise TemporalTrainingError("temporal training produced a non-finite loss")
             loss.backward()
-            torch.nn.utils.clip_grad_norm_(
-                model.parameters(), experiment.training.gradient_clip
-            )
+            torch.nn.utils.clip_grad_norm_(model.parameters(), experiment.training.gradient_clip)
             optimizer.step()
         valid_probabilities = _predict_probabilities(
             model,
@@ -782,9 +776,7 @@ def run_temporal_experiment(
         sequence_schema_fingerprint=prepared.sequence.schema_fingerprint,
         runtime_seconds=perf_counter() - started,
         peak_rss_megabytes=peak_rss,
-        sensor_ablation=pd.concat(
-            [output.ablations for output in outputs], ignore_index=True
-        ),
+        sensor_ablation=pd.concat([output.ablations for output in outputs], ignore_index=True),
         artifact_dir=output_dir,
     )
 
@@ -803,8 +795,7 @@ def _json_default(value: object) -> object:
 
 def _write_json(path: Path, value: Any) -> None:
     path.write_text(
-        json.dumps(value, indent=2, sort_keys=True, allow_nan=False, default=_json_default)
-        + "\n",
+        json.dumps(value, indent=2, sort_keys=True, allow_nan=False, default=_json_default) + "\n",
         encoding="utf-8",
     )
 
@@ -826,8 +817,7 @@ def _screening_decision(
         }
     if result.stage == "full":
         within_tolerance = robust >= (
-            experiment.viability.best_tree_robust_score
-            - experiment.viability.full_score_tolerance
+            experiment.viability.best_tree_robust_score - experiment.viability.full_score_tolerance
         )
         return {
             "stage": "full",

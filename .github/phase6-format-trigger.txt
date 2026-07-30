@@ -1,1 +1,0 @@
-Trigger direct Ruff formatting workflow.

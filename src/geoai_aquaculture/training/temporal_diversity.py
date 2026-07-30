@@ -148,10 +148,9 @@ def blend_oof_predictions(
     aligned = left.merge(right, on=keys, how="inner", validate="one_to_one")
     if aligned.shape[0] != temporal.windows.shape[0] or aligned.shape[0] != tree.windows.shape[0]:
         raise TemporalDiversityError("temporal and tree window predictions do not align")
-    probability = (
-        (1.0 - tree_weight) * aligned["probability_temporal"].to_numpy(dtype=np.float64)
-        + tree_weight * aligned["probability_tree"].to_numpy(dtype=np.float64)
-    )
+    probability = (1.0 - tree_weight) * aligned["probability_temporal"].to_numpy(
+        dtype=np.float64
+    ) + tree_weight * aligned["probability_tree"].to_numpy(dtype=np.float64)
     prediction = (probability >= 0.5).astype(np.int8)
     windows = aligned.loc[:, keys].copy()
     windows["y_true"] = windows["label"].to_numpy(dtype=np.int8)
