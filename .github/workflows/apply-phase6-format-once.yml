@@ -1,7 +1,7 @@
 name: Apply Phase 6 formatting once
 
 on:
-  push:
+  pull_request:
     branches: [main]
 
 permissions:
