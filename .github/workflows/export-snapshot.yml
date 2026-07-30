@@ -16,11 +16,11 @@ jobs:
           fetch-depth: 0
       - name: Create source archive
         run: |
-          tar --exclude=.git --exclude=artifacts --exclude=data/raw --exclude='*.csv' -czf geoai-source.tar.gz .
+          tar --exclude=.git --exclude=artifacts --exclude=data/raw --exclude='*.csv' -czf /tmp/geoai-source.tar.gz .
       - name: Upload source archive
         uses: actions/upload-artifact@v4
         with:
           name: geoai-source
-          path: geoai-source.tar.gz
+          path: /tmp/geoai-source.tar.gz
           if-no-files-found: error
           retention-days: 1
