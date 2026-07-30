@@ -1,0 +1,34 @@
+name: Apply final Phase 6 formatting
+
+on:
+  push:
+    branches: [phase6/compact-gru]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: phase6/compact-gru
+          fetch-depth: 0
+      - name: Apply verified formatter patches
+        run: |
+          git apply --check .github/phase6-format.patch
+          git apply .github/phase6-format.patch
+          git apply --check .github/phase6-format-followup.patch
+          git apply .github/phase6-format-followup.patch
+          rm .github/phase6-format.patch
+          rm .github/phase6-format-followup.patch
+          rm .github/workflows/phase6-format-autofix.yml
+      - name: Commit formatted files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "style: apply Ruff 0.16 formatting"
+          git push origin HEAD:phase6/compact-gru
