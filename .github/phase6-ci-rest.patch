@@ -1,0 +1,399 @@
+diff --git a/src/geoai_aquaculture/models/__init__.py b/src/geoai_aquaculture/models/__init__.py
+index ffdd62a..642e996 100644
+--- a/src/geoai_aquaculture/models/__init__.py
++++ b/src/geoai_aquaculture/models/__init__.py
+@@ -1,5 +1,13 @@
+ """Tree and temporal model implementations."""
+ 
++from .tabular import (
++    CatBoostAdapter,
++    LightGBMAdapter,
++    ModelAdapterError,
++    ModelFitMetadata,
++    TabularModelAdapter,
++    create_tabular_model_adapter,
++)
+ from .temporal import (
+     SensorGatedGRU,
+     TemporalArchitecture,
+@@ -9,25 +17,17 @@ from .temporal import (
+     count_trainable_parameters,
+     masked_mean_pool,
+ )
+-from .tabular import (
+-    CatBoostAdapter,
+-    LightGBMAdapter,
+-    ModelAdapterError,
+-    ModelFitMetadata,
+-    TabularModelAdapter,
+-    create_tabular_model_adapter,
+-)
+ 
+ __all__ = [
+     "CatBoostAdapter",
+-    "SensorGatedGRU",
+-    "TemporalArchitecture",
+-    "TemporalForwardOutput",
+-    "TemporalModelError",
+     "LightGBMAdapter",
+     "ModelAdapterError",
+     "ModelFitMetadata",
++    "SensorGatedGRU",
+     "TabularModelAdapter",
++    "TemporalArchitecture",
++    "TemporalForwardOutput",
++    "TemporalModelError",
+     "architecture_from_dict",
+     "count_trainable_parameters",
+     "create_tabular_model_adapter",
+diff --git a/src/geoai_aquaculture/training/__init__.py b/src/geoai_aquaculture/training/__init__.py
+index 53becc4..0b96197 100644
+--- a/src/geoai_aquaculture/training/__init__.py
++++ b/src/geoai_aquaculture/training/__init__.py
+@@ -58,6 +58,13 @@ from .temporal import (
+     run_temporal_experiment,
+     write_temporal_experiment_artifacts,
+ )
++from .temporal_config import (
++    TemporalExperimentConfig,
++    TemporalExperimentConfigError,
++    TemporalTrainingConfig,
++    TemporalViabilityGates,
++    load_temporal_experiment_config,
++)
+ from .temporal_diversity import (
+     TemporalDiversityError,
+     TemporalTreeDiversityReport,
+@@ -66,13 +73,6 @@ from .temporal_diversity import (
+     pairwise_oof_summary,
+     write_temporal_tree_diversity,
+ )
+-from .temporal_config import (
+-    TemporalExperimentConfigError,
+-    TemporalExperimentConfig,
+-    TemporalTrainingConfig,
+-    TemporalViabilityGates,
+-    load_temporal_experiment_config,
+-)
+ from .weights import (
+     SampleWeightResult,
+     WeightingError,
+@@ -81,20 +81,8 @@ from .weights import (
+ 
+ __all__ = [
+     "AcceptedCandidateRegistry",
+-    "ChannelStatistics",
+-    "PreparedTemporalData",
+-    "SameOriginalPairMap",
+-    "SequenceNormalizer",
+-    "TemporalExperimentConfigError",
+-    "TemporalDiversityError",
+-    "TemporalTreeDiversityReport",
+-    "TemporalExperimentConfig",
+-    "TemporalFoldResult",
+-    "TemporalTrainingConfig",
+-    "TemporalTrainingError",
+-    "TemporalTrainingResult",
+-    "TemporalViabilityGates",
+     "CandidateRecord",
++    "ChannelStatistics",
+     "DiversityError",
+     "ExperimentArtifactError",
+     "ExperimentArtifactManifest",
+@@ -106,17 +94,29 @@ __all__ = [
+     "ModelProfile",
+     "OOFDiversityReport",
+     "PreparedTabularData",
++    "PreparedTemporalData",
++    "SameOriginalPairMap",
+     "SampleWeightResult",
++    "SequenceNormalizer",
+     "TabularExperimentConfig",
+     "TabularTrainingError",
+     "TabularTrainingResult",
++    "TemporalDiversityError",
++    "TemporalExperimentConfig",
++    "TemporalExperimentConfigError",
++    "TemporalFoldResult",
++    "TemporalTrainingConfig",
++    "TemporalTrainingError",
++    "TemporalTrainingResult",
++    "TemporalTreeDiversityReport",
++    "TemporalViabilityGates",
+     "WeightingError",
+     "WeightingPolicy",
+     "analyze_oof_diversity",
+     "analyze_temporal_tree_diversity",
+     "assert_resume_compatible",
+-    "build_window_sample_weights",
+     "blend_oof_predictions",
++    "build_window_sample_weights",
+     "execute_tabular_experiment",
+     "execute_temporal_experiment",
+     "experiment_artifact_dir",
+@@ -125,19 +125,19 @@ __all__ = [
+     "load_experiment_artifact_manifest",
+     "load_tabular_experiment_config",
+     "load_temporal_experiment_config",
+-    "prepare_experiment_artifact_dir",
+     "pairwise_oof_summary",
+-    "prepare_temporal_experiment_data",
++    "prepare_experiment_artifact_dir",
+     "prepare_tabular_experiment_data",
++    "prepare_temporal_experiment_data",
+     "run_tabular_experiment",
+-    "run_temporal_experiment",
+     "run_tabular_fold",
++    "run_temporal_experiment",
+     "stage_repeat_folds",
+     "summarize_feature_importance",
+     "validate_full_oof_contract",
+     "validate_phase3_feature_contract",
+     "write_oof_diversity_artifacts",
+     "write_tabular_experiment_artifacts",
+-    "write_temporal_tree_diversity",
+     "write_temporal_experiment_artifacts",
++    "write_temporal_tree_diversity",
+ ]
+diff --git a/src/geoai_aquaculture/training/temporal.py b/src/geoai_aquaculture/training/temporal.py
+index 2ad35d0..910b12a 100644
+--- a/src/geoai_aquaculture/training/temporal.py
++++ b/src/geoai_aquaculture/training/temporal.py
+@@ -2,9 +2,7 @@
+ 
+ from __future__ import annotations
+ 
+-import copy
+ import gc
+-import hashlib
+ import json
+ import random
+ import resource
+@@ -101,7 +99,9 @@ class SequenceNormalizer:
+         for channel in range(channels):
+             valid = selected_values[:, :, channel][selected_mask[:, :, channel]]
+             if valid.size == 0:
+-                raise TemporalTrainingError(f"training fold has no valid values for channel {channel}")
++                raise TemporalTrainingError(
++                    f"training fold has no valid values for channel {channel}"
++                )
+             mean[channel] = float(np.mean(valid))
+             std = float(np.std(valid, ddof=0))
+             scale[channel] = std if np.isfinite(std) and std > 1e-8 else 1.0
+@@ -360,7 +360,9 @@ def _validate_shared_repeat_panel(windows: ValidationWindowManifest, n_repeats:
+         try:
+             pd.testing.assert_frame_equal(reference, candidate, check_exact=True)
+         except AssertionError as exc:
+-            raise TemporalTrainingError("fixed sequence values differ between validation repeats") from exc
++            raise TemporalTrainingError(
++                "fixed sequence values differ between validation repeats"
++            ) from exc
+     return rows_per_repeat
+ 
+ 
+@@ -411,7 +413,10 @@ def _set_seed(seed: int, cpu_threads: int) -> None:
+     torch.use_deterministic_algorithms(True)
+ 
+ 
+-def _architecture(experiment: TemporalExperimentConfig, sequence: SequenceFeatureDataset) -> TemporalArchitecture:
++def _architecture(
++    experiment: TemporalExperimentConfig,
++    sequence: SequenceFeatureDataset,
++) -> TemporalArchitecture:
+     architecture = architecture_from_dict(
+         dict(experiment.architecture),
+         radar_channels=len(sequence.radar_feature_names),
+@@ -534,7 +539,10 @@ def _train_fold_model(
+         experiment.training.smoke_epochs if stage == "smoke" else experiment.training.max_epochs
+     )
+     train_weights = _training_weights(sequence.original_ids, train_indices)
+-    weight_lookup = {int(index): float(weight) for index, weight in zip(train_indices, train_weights, strict=True)}
++    weight_lookup = {
++        int(index): float(weight)
++        for index, weight in zip(train_indices, train_weights, strict=True)
++    }
+     pair_map = (
+         SameOriginalPairMap.build(sequence.original_ids, train_indices)
+         if experiment.objective == "bce_consistency"
+diff --git a/src/geoai_aquaculture/training/temporal_config.py b/src/geoai_aquaculture/training/temporal_config.py
+index 1c54d32..a4171f4 100644
+--- a/src/geoai_aquaculture/training/temporal_config.py
++++ b/src/geoai_aquaculture/training/temporal_config.py
+@@ -46,7 +46,9 @@ class TemporalTrainingConfig:
+         if self.max_epochs < 2 or not 1 <= self.smoke_epochs <= self.max_epochs:
+             raise TemporalExperimentConfigError("temporal epoch limits are invalid")
+         if self.batch_size < 2 or self.patience < 1 or self.cpu_threads < 1:
+-            raise TemporalExperimentConfigError("batch size, patience and CPU threads must be positive")
++            raise TemporalExperimentConfigError(
++                "batch size, patience and CPU threads must be positive"
++            )
+         for name, value in (
+             ("learning_rate", self.learning_rate),
+             ("weight_decay", self.weight_decay),
+@@ -76,7 +78,9 @@ class TemporalViabilityGates:
+             ("screening_max_gap", self.screening_max_gap),
+         ):
+             if not np.isfinite(value) or value < 0.0:
+-                raise TemporalExperimentConfigError(f"viability.{name} must be finite and non-negative")
++                raise TemporalExperimentConfigError(
++                    f"viability.{name} must be finite and non-negative"
++                )
+ 
+ 
+ @dataclass(frozen=True, slots=True)
+@@ -98,7 +102,9 @@ class TemporalExperimentConfig:
+ 
+     def __post_init__(self) -> None:
+         if not self.experiment_id.strip() or not self.hypothesis.strip():
+-            raise TemporalExperimentConfigError("temporal experiment ID and hypothesis are required")
++            raise TemporalExperimentConfigError(
++                "temporal experiment ID and hypothesis are required"
++            )
+         if self.objective not in {"bce", "bce_consistency"}:
+             raise TemporalExperimentConfigError("temporal objective is unsupported")
+         if self.seed < 0:
+@@ -110,7 +116,9 @@ class TemporalExperimentConfig:
+         if not self.allowed_stages or set(self.allowed_stages) - {"smoke", "screen", "full"}:
+             raise TemporalExperimentConfigError("allowed stages are invalid")
+         if not np.isfinite(self.consistency_lambda) or self.consistency_lambda < 0.0:
+-            raise TemporalExperimentConfigError("consistency lambda must be finite and non-negative")
++            raise TemporalExperimentConfigError(
++                "consistency lambda must be finite and non-negative"
++            )
+         if self.objective == "bce" and self.consistency_lambda != 0.0:
+             raise TemporalExperimentConfigError("BCE baseline cannot silently enable consistency")
+         if self.objective == "bce_consistency" and self.consistency_lambda <= 0.0:
+@@ -194,13 +202,30 @@ def load_temporal_experiment_config(path: str | Path) -> TemporalExperimentConfi
+     if not isinstance(allowed, list) or not all(isinstance(item, str) for item in allowed):
+         raise TemporalExperimentConfigError("experiment.allowed_stages must be a list of strings")
+     training = TemporalTrainingConfig(
+-        max_epochs=_positive_int(training_raw.get("max_epochs", 50), "training.max_epochs", minimum=2),
++        max_epochs=_positive_int(
++            training_raw.get("max_epochs", 50),
++            "training.max_epochs",
++            minimum=2,
++        ),
+         smoke_epochs=_positive_int(training_raw.get("smoke_epochs", 2), "training.smoke_epochs"),
+-        batch_size=_positive_int(training_raw.get("batch_size", 256), "training.batch_size", minimum=2),
+-        learning_rate=_positive_float(training_raw.get("learning_rate", 1e-3), "training.learning_rate"),
+-        weight_decay=_positive_float(training_raw.get("weight_decay", 1e-4), "training.weight_decay"),
++        batch_size=_positive_int(
++            training_raw.get("batch_size", 256),
++            "training.batch_size",
++            minimum=2,
++        ),
++        learning_rate=_positive_float(
++            training_raw.get("learning_rate", 1e-3),
++            "training.learning_rate",
++        ),
++        weight_decay=_positive_float(
++            training_raw.get("weight_decay", 1e-4),
++            "training.weight_decay",
++        ),
+         patience=_positive_int(training_raw.get("patience", 8), "training.patience"),
+-        gradient_clip=_positive_float(training_raw.get("gradient_clip", 1.0), "training.gradient_clip"),
++        gradient_clip=_positive_float(
++            training_raw.get("gradient_clip", 1.0),
++            "training.gradient_clip",
++        ),
+         input_clip=_positive_float(training_raw.get("input_clip", 8.0), "training.input_clip"),
+         cpu_threads=_positive_int(training_raw.get("cpu_threads", 4), "training.cpu_threads"),
+     )
+diff --git a/tests/test_tabular_phase5.py b/tests/test_tabular_phase5.py
+index 8520104..32ebcef 100644
+--- a/tests/test_tabular_phase5.py
++++ b/tests/test_tabular_phase5.py
+@@ -267,7 +267,7 @@ def test_experiment_config_rejects_threshold_and_stage_promotion(tmp_path: Path)
+     with pytest.raises(ExperimentConfigError, match="not approved"):
+         load_tabular_experiment_config(path).require_stage("full")
+     path.write_text(restricted.replace("threshold: 0.5", "threshold: 0.49"), encoding="utf-8")
+-    with pytest.raises(ExperimentConfigError, match="exactly 0.5"):
++    with pytest.raises(ExperimentConfigError, match=r"exactly 0\.5"):
+         load_tabular_experiment_config(path)
+ 
+ 
+diff --git a/tests/test_temporal_phase6.py b/tests/test_temporal_phase6.py
+index 93dcabe..78504fc 100644
+--- a/tests/test_temporal_phase6.py
++++ b/tests/test_temporal_phase6.py
+@@ -7,16 +7,23 @@ import pytest
+ 
+ torch = pytest.importorskip("torch")
+ 
+-from geoai_aquaculture.features import FeatureDefinition, FeatureRegistry, SequenceFeatureDataset
+-from geoai_aquaculture.models.temporal import (
++from geoai_aquaculture.features import (  # noqa: E402
++    FeatureDefinition,
++    FeatureRegistry,
++    SequenceFeatureDataset,
++)
++from geoai_aquaculture.models.temporal import (  # noqa: E402
+     SensorGatedGRU,
+     TemporalArchitecture,
+     TemporalModelError,
+     count_trainable_parameters,
+     masked_mean_pool,
+ )
+-from geoai_aquaculture.training.temporal import SameOriginalPairMap, SequenceNormalizer
+-from geoai_aquaculture.training.temporal_config import (
++from geoai_aquaculture.training.temporal import (  # noqa: E402
++    SameOriginalPairMap,
++    SequenceNormalizer,
++)
++from geoai_aquaculture.training.temporal_config import (  # noqa: E402
+     TemporalExperimentConfigError,
+     load_temporal_experiment_config,
+ )
+@@ -91,7 +98,20 @@ def _sequence() -> SequenceFeatureDataset:
+         radar_feature_names=tuple(f"r{i}" for i in range(8)),
+         optical_feature_names=tuple(f"o{i}" for i in range(10)),
+         index_feature_names=tuple(f"i{i}" for i in range(14)),
+-        raw_band_names=("VH", "VV", "blue", "green", "nir", "nira", "re1", "re2", "re3", "red", "swir1", "swir2"),
++        raw_band_names=(
++            "VH",
++            "VV",
++            "blue",
++            "green",
++            "nir",
++            "nira",
++            "re1",
++            "re2",
++            "re3",
++            "red",
++            "swir1",
++            "swir2",
++        ),
+         original_ids=original_ids,
+         window_ids=np.asarray([f"W{i}" for i in range(rows)], dtype=object),
+         folds=np.asarray([0, 0, 1, 1, 0, 0, 1, 1], dtype=np.int16),
+@@ -224,7 +244,7 @@ experiment:
+     assert config.threshold == 0.5
+     assert config.training.max_epochs == 3
+     source.write_text(source.read_text().replace("threshold: 0.5", "threshold: 0.4"))
+-    with pytest.raises(TemporalExperimentConfigError, match="exactly 0.5"):
++    with pytest.raises(TemporalExperimentConfigError, match=r"exactly 0\.5"):
+         load_temporal_experiment_config(source)
+ 
+ 
+diff --git a/tests/test_validation.py b/tests/test_validation.py
+index 6779524..0a19ae0 100644
+--- a/tests/test_validation.py
++++ b/tests/test_validation.py
+@@ -201,7 +201,7 @@ def test_validation_config_locks_threshold_and_robust_policy() -> None:
+             config.robust_score_weights.worst_season,
+         )
+     ) == pytest.approx(1.0)
+-    with pytest.raises(ConfigError, match="exactly 0.5"):
++    with pytest.raises(ConfigError, match=r"exactly 0\.5"):
+         replace(config, fixed_threshold=0.49)
+     with pytest.raises(ConfigError, match="precede"):
+         replace(config, split_before_augmentation=False)
+@@ -269,7 +269,7 @@ def test_exact_metrics_use_point_five_and_explicit_single_class_auc() -> None:
+     single = metric_result(np.ones(3), np.asarray([0.4, 0.6, 0.8]))
+     assert single.roc_auc is None and single.combined_score is None
+     assert single.auc_defined is False
+-    with pytest.raises(ValueError, match="exactly 0.5"):
++    with pytest.raises(ValueError, match=r"exactly 0\.5"):
+         metric_result(labels, probabilities, threshold=0.51)
+ 
+ 
