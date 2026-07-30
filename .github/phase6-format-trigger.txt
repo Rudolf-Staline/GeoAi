@@ -1,1 +1,1 @@
-Trigger final formatting workflow after PR synchronization.
+Trigger direct Ruff formatting workflow.
