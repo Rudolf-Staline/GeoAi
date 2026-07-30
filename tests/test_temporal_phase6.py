@@ -7,16 +7,23 @@ import pytest
 
 torch = pytest.importorskip("torch")
 
-from geoai_aquaculture.features import FeatureDefinition, FeatureRegistry, SequenceFeatureDataset
-from geoai_aquaculture.models.temporal import (
+from geoai_aquaculture.features import (  # noqa: E402
+    FeatureDefinition,
+    FeatureRegistry,
+    SequenceFeatureDataset,
+)
+from geoai_aquaculture.models.temporal import (  # noqa: E402
     SensorGatedGRU,
     TemporalArchitecture,
     TemporalModelError,
     count_trainable_parameters,
     masked_mean_pool,
 )
-from geoai_aquaculture.training.temporal import SameOriginalPairMap, SequenceNormalizer
-from geoai_aquaculture.training.temporal_config import (
+from geoai_aquaculture.training.temporal import (  # noqa: E402
+    SameOriginalPairMap,
+    SequenceNormalizer,
+)
+from geoai_aquaculture.training.temporal_config import (  # noqa: E402
     TemporalExperimentConfigError,
     load_temporal_experiment_config,
 )
@@ -91,7 +98,20 @@ def _sequence() -> SequenceFeatureDataset:
         radar_feature_names=tuple(f"r{i}" for i in range(8)),
         optical_feature_names=tuple(f"o{i}" for i in range(10)),
         index_feature_names=tuple(f"i{i}" for i in range(14)),
-        raw_band_names=("VH", "VV", "blue", "green", "nir", "nira", "re1", "re2", "re3", "red", "swir1", "swir2"),
+        raw_band_names=(
+            "VH",
+            "VV",
+            "blue",
+            "green",
+            "nir",
+            "nira",
+            "re1",
+            "re2",
+            "re3",
+            "red",
+            "swir1",
+            "swir2",
+        ),
         original_ids=original_ids,
         window_ids=np.asarray([f"W{i}" for i in range(rows)], dtype=object),
         folds=np.asarray([0, 0, 1, 1, 0, 0, 1, 1], dtype=np.int16),
@@ -224,7 +244,7 @@ experiment:
     assert config.threshold == 0.5
     assert config.training.max_epochs == 3
     source.write_text(source.read_text().replace("threshold: 0.5", "threshold: 0.4"))
-    with pytest.raises(TemporalExperimentConfigError, match="exactly 0.5"):
+    with pytest.raises(TemporalExperimentConfigError, match=r"exactly 0\.5"):
         load_temporal_experiment_config(source)
 
 

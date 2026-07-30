@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-import copy
 import gc
-import hashlib
 import json
 import random
 import resource
@@ -101,7 +99,9 @@ class SequenceNormalizer:
         for channel in range(channels):
             valid = selected_values[:, :, channel][selected_mask[:, :, channel]]
             if valid.size == 0:
-                raise TemporalTrainingError(f"training fold has no valid values for channel {channel}")
+                raise TemporalTrainingError(
+                    f"training fold has no valid values for channel {channel}"
+                )
             mean[channel] = float(np.mean(valid))
             std = float(np.std(valid, ddof=0))
             scale[channel] = std if np.isfinite(std) and std > 1e-8 else 1.0
@@ -360,7 +360,9 @@ def _validate_shared_repeat_panel(windows: ValidationWindowManifest, n_repeats: 
         try:
             pd.testing.assert_frame_equal(reference, candidate, check_exact=True)
         except AssertionError as exc:
-            raise TemporalTrainingError("fixed sequence values differ between validation repeats") from exc
+            raise TemporalTrainingError(
+                "fixed sequence values differ between validation repeats"
+            ) from exc
     return rows_per_repeat
 
 
@@ -411,7 +413,10 @@ def _set_seed(seed: int, cpu_threads: int) -> None:
     torch.use_deterministic_algorithms(True)
 
 
-def _architecture(experiment: TemporalExperimentConfig, sequence: SequenceFeatureDataset) -> TemporalArchitecture:
+def _architecture(
+    experiment: TemporalExperimentConfig,
+    sequence: SequenceFeatureDataset,
+) -> TemporalArchitecture:
     architecture = architecture_from_dict(
         dict(experiment.architecture),
         radar_channels=len(sequence.radar_feature_names),
@@ -534,7 +539,10 @@ def _train_fold_model(
         experiment.training.smoke_epochs if stage == "smoke" else experiment.training.max_epochs
     )
     train_weights = _training_weights(sequence.original_ids, train_indices)
-    weight_lookup = {int(index): float(weight) for index, weight in zip(train_indices, train_weights, strict=True)}
+    weight_lookup = {
+        int(index): float(weight)
+        for index, weight in zip(train_indices, train_weights, strict=True)
+    }
     pair_map = (
         SameOriginalPairMap.build(sequence.original_ids, train_indices)
         if experiment.objective == "bce_consistency"

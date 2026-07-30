@@ -46,7 +46,9 @@ class TemporalTrainingConfig:
         if self.max_epochs < 2 or not 1 <= self.smoke_epochs <= self.max_epochs:
             raise TemporalExperimentConfigError("temporal epoch limits are invalid")
         if self.batch_size < 2 or self.patience < 1 or self.cpu_threads < 1:
-            raise TemporalExperimentConfigError("batch size, patience and CPU threads must be positive")
+            raise TemporalExperimentConfigError(
+                "batch size, patience and CPU threads must be positive"
+            )
         for name, value in (
             ("learning_rate", self.learning_rate),
             ("weight_decay", self.weight_decay),
@@ -76,7 +78,9 @@ class TemporalViabilityGates:
             ("screening_max_gap", self.screening_max_gap),
         ):
             if not np.isfinite(value) or value < 0.0:
-                raise TemporalExperimentConfigError(f"viability.{name} must be finite and non-negative")
+                raise TemporalExperimentConfigError(
+                    f"viability.{name} must be finite and non-negative"
+                )
 
 
 @dataclass(frozen=True, slots=True)
@@ -98,7 +102,9 @@ class TemporalExperimentConfig:
 
     def __post_init__(self) -> None:
         if not self.experiment_id.strip() or not self.hypothesis.strip():
-            raise TemporalExperimentConfigError("temporal experiment ID and hypothesis are required")
+            raise TemporalExperimentConfigError(
+                "temporal experiment ID and hypothesis are required"
+            )
         if self.objective not in {"bce", "bce_consistency"}:
             raise TemporalExperimentConfigError("temporal objective is unsupported")
         if self.seed < 0:
@@ -110,7 +116,9 @@ class TemporalExperimentConfig:
         if not self.allowed_stages or set(self.allowed_stages) - {"smoke", "screen", "full"}:
             raise TemporalExperimentConfigError("allowed stages are invalid")
         if not np.isfinite(self.consistency_lambda) or self.consistency_lambda < 0.0:
-            raise TemporalExperimentConfigError("consistency lambda must be finite and non-negative")
+            raise TemporalExperimentConfigError(
+                "consistency lambda must be finite and non-negative"
+            )
         if self.objective == "bce" and self.consistency_lambda != 0.0:
             raise TemporalExperimentConfigError("BCE baseline cannot silently enable consistency")
         if self.objective == "bce_consistency" and self.consistency_lambda <= 0.0:
@@ -194,13 +202,30 @@ def load_temporal_experiment_config(path: str | Path) -> TemporalExperimentConfi
     if not isinstance(allowed, list) or not all(isinstance(item, str) for item in allowed):
         raise TemporalExperimentConfigError("experiment.allowed_stages must be a list of strings")
     training = TemporalTrainingConfig(
-        max_epochs=_positive_int(training_raw.get("max_epochs", 50), "training.max_epochs", minimum=2),
+        max_epochs=_positive_int(
+            training_raw.get("max_epochs", 50),
+            "training.max_epochs",
+            minimum=2,
+        ),
         smoke_epochs=_positive_int(training_raw.get("smoke_epochs", 2), "training.smoke_epochs"),
-        batch_size=_positive_int(training_raw.get("batch_size", 256), "training.batch_size", minimum=2),
-        learning_rate=_positive_float(training_raw.get("learning_rate", 1e-3), "training.learning_rate"),
-        weight_decay=_positive_float(training_raw.get("weight_decay", 1e-4), "training.weight_decay"),
+        batch_size=_positive_int(
+            training_raw.get("batch_size", 256),
+            "training.batch_size",
+            minimum=2,
+        ),
+        learning_rate=_positive_float(
+            training_raw.get("learning_rate", 1e-3),
+            "training.learning_rate",
+        ),
+        weight_decay=_positive_float(
+            training_raw.get("weight_decay", 1e-4),
+            "training.weight_decay",
+        ),
         patience=_positive_int(training_raw.get("patience", 8), "training.patience"),
-        gradient_clip=_positive_float(training_raw.get("gradient_clip", 1.0), "training.gradient_clip"),
+        gradient_clip=_positive_float(
+            training_raw.get("gradient_clip", 1.0),
+            "training.gradient_clip",
+        ),
         input_clip=_positive_float(training_raw.get("input_clip", 8.0), "training.input_clip"),
         cpu_threads=_positive_int(training_raw.get("cpu_threads", 4), "training.cpu_threads"),
     )
