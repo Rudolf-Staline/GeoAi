@@ -187,9 +187,8 @@ def crossfit_calibration(
 
     if method == "none":
         report = build_validation_report(base, project.validation)
-        consensus = (
-            base.original.groupby("original_id", observed=True, as_index=False)
-            .agg(label=("label", "first"), probability=("probability", "mean"))
+        consensus = base.original.groupby("original_id", observed=True, as_index=False).agg(
+            label=("label", "first"), probability=("probability", "mean")
         )
         calibrator = _fit_calibrator(
             consensus["probability"].to_numpy(dtype=np.float64),
@@ -230,9 +229,8 @@ def crossfit_calibration(
         trimmed_fraction=project.validation.trimmed_mean_fraction,
     )
     report = build_validation_report(oof, project.validation)
-    consensus = (
-        base.original.groupby("original_id", observed=True, as_index=False)
-        .agg(label=("label", "first"), probability=("probability", "mean"))
+    consensus = base.original.groupby("original_id", observed=True, as_index=False).agg(
+        label=("label", "first"), probability=("probability", "mean")
     )
     production = _fit_calibrator(
         consensus["probability"].to_numpy(dtype=np.float64),

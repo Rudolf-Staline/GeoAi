@@ -188,9 +188,7 @@ def load_final_delivery_config(path: str | Path) -> FinalDeliveryConfig:
         "rebuild_missing_oof": bool(value.get("rebuild_missing_oof", True)),
         "overwrite_oof": bool(value.get("overwrite_oof", False)),
         "tta_enabled": bool(value.get("tta_enabled", False)),
-        "prior_shift_correction_enabled": bool(
-            value.get("prior_shift_correction_enabled", False)
-        ),
+        "prior_shift_correction_enabled": bool(value.get("prior_shift_correction_enabled", False)),
         "threshold": float(value.get("threshold", FIXED_THRESHOLD)),
         "source_commit": (str(value.get("source_commit")) if value.get("source_commit") else None),
     }

@@ -176,10 +176,9 @@ def _blend_window_frame(
         weights = np.asarray(tree_weights, dtype=np.float64)
     if weights.shape != (aligned.shape[0],) or np.any((weights < 0.0) | (weights > 1.0)):
         raise FinalOOFError("blend weights must align with windows and lie in [0, 1]")
-    probability = (
-        weights * aligned["tree_probability"].to_numpy(dtype=np.float64)
-        + (1.0 - weights) * aligned["temporal_probability"].to_numpy(dtype=np.float64)
-    )
+    probability = weights * aligned["tree_probability"].to_numpy(dtype=np.float64) + (
+        1.0 - weights
+    ) * aligned["temporal_probability"].to_numpy(dtype=np.float64)
     prediction = (probability >= FIXED_THRESHOLD).astype(np.int8)
     frame = aligned.drop(columns=["tree_probability", "temporal_probability"]).copy()
     frame["probability"] = probability
@@ -229,7 +228,7 @@ def evaluate_fixed_blend(
         aligned,
         tree_weights=tree_weight,
         experiment_id=f"PHASE8-{label}",
-        model_id=f"blend:tree={tree_weight:.4f}:temporal={1.0-tree_weight:.4f}",
+        model_id=f"blend:tree={tree_weight:.4f}:temporal={1.0 - tree_weight:.4f}",
     )
     folds = load_fold_manifest(
         project.tabular.validation_artifacts_dir / "fold_manifest.csv",
@@ -313,17 +312,12 @@ def learn_nested_weight(
     row_weights = np.empty(aligned_windows.shape[0], dtype=np.float64)
     for repeat in sorted(originals["repeat"].unique().tolist()):
         for fold in sorted(originals.loc[originals["repeat"].eq(repeat), "fold"].unique().tolist()):
-            training = originals.loc[
-                originals["repeat"].eq(repeat) & ~originals["fold"].eq(fold)
-            ]
-            heldout = originals.loc[
-                originals["repeat"].eq(repeat) & originals["fold"].eq(fold)
-            ]
+            training = originals.loc[originals["repeat"].eq(repeat) & ~originals["fold"].eq(fold)]
+            heldout = originals.loc[originals["repeat"].eq(repeat) & originals["fold"].eq(fold)]
             weight, training_score, training_brier = _best_weight(training, grid)
-            heldout_probability = (
-                weight * heldout["tree_probability"].to_numpy(dtype=np.float64)
-                + (1.0 - weight) * heldout["temporal_probability"].to_numpy(dtype=np.float64)
-            )
+            heldout_probability = weight * heldout["tree_probability"].to_numpy(
+                dtype=np.float64
+            ) + (1.0 - weight) * heldout["temporal_probability"].to_numpy(dtype=np.float64)
             heldout_metrics = metric_result(heldout["label"], heldout_probability)
             mask = aligned_windows["repeat"].eq(repeat) & aligned_windows["fold"].eq(fold)
             row_weights[mask.to_numpy()] = weight
