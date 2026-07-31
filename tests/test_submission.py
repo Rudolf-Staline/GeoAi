@@ -28,3 +28,15 @@ def test_submission_rejects_wrong_id_order() -> None:
 def test_submission_rejects_duplicate_ids() -> None:
     with pytest.raises(ValueError, match="unique"):
         build_submission(["a", "a"], [0.2, 0.8])
+
+
+def test_submission_accepts_equivalent_string_dtypes() -> None:
+    submission = build_submission(["a", "b"], [0.2, 0.8])
+    sample = pd.DataFrame(
+        {
+            "ID": pd.Series(["a", "b"], dtype="string"),
+            "TargetF1": [0, 0],
+            "TargetRAUC": [0.0, 0.0],
+        }
+    )
+    validate_submission(submission, sample)

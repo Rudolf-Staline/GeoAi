@@ -327,14 +327,13 @@ class LightGBMAdapter(TabularModelAdapter):
             features,
             y_train,
             sample_weight=train_weight,
+            eval_set=[(validation_features, y_valid)],
             eval_sample_weight=[valid_weight] if valid_weight is not None else None,
             eval_metric="binary_logloss",
             callbacks=[
                 early_stopping(early_stopping_rounds, verbose=False),
                 log_evaluation(period=0),
             ],
-            eval_X=validation_features,
-            eval_y=y_valid,
         )
         self._booster = self._model.booster_
         best_iteration = int(self._model.best_iteration_ or self._booster.current_iteration())

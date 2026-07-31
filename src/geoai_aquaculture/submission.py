@@ -43,7 +43,9 @@ def validate_submission(submission: pd.DataFrame, sample: pd.DataFrame) -> None:
         raise ValueError(f"sample columns must be exactly {SUBMISSION_COLUMNS}")
     if submission.shape[0] != sample.shape[0]:
         raise ValueError("submission row count does not match sample submission")
-    if not submission[ID_COLUMN].equals(sample[ID_COLUMN]):
+    submission_ids = submission[ID_COLUMN].astype("string").reset_index(drop=True)
+    sample_ids = sample[ID_COLUMN].astype("string").reset_index(drop=True)
+    if not submission_ids.equals(sample_ids):
         raise ValueError("submission IDs or row order do not match sample submission")
     if submission.isna().any().any():
         raise ValueError("submission contains missing values")

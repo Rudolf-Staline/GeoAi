@@ -1,0 +1,23 @@
+final:
+  project_config: configs/base.yaml
+  output_dir: artifacts/final
+  source_commit: 435dfb2a47ef232be296f931e097a0bd7b8bb39f
+  threshold: 0.5
+  rebuild_missing_oof: true
+  overwrite_oof: false
+  weight_grid_step: 0.01
+  fixed_tree_weights: [0.50, 0.70]
+  calibration_methods: [none, sigmoid, beta]
+  tta_enabled: false
+  prior_shift_correction_enabled: false
+  candidates:
+    - experiment_id: EXP-TAB-003-LGB-FULL-UNIFORM
+      kind: tree
+      role: strongest retained tree baseline
+      artifact_dir: artifacts/experiments/EXP-TAB-003-LGB-FULL-UNIFORM
+      experiment_config: configs/experiments/exp_tab_003_full_lgb_uniform.yaml
+    - experiment_id: EXP-SEQ-001-GRU-BCE
+      kind: temporal
+      role: strongest standalone robust candidate
+      artifact_dir: artifacts/experiments/EXP-SEQ-001-GRU-BCE
+      experiment_config: configs/experiments/exp_seq_001_gru_bce.yaml
