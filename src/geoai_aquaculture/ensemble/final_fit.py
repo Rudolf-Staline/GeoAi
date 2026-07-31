@@ -396,7 +396,7 @@ def fit_final_temporal(
         training_parameter=epochs,
         metadata={
             "parameter_count": parameter_count,
-            "training_windows": int(len(original_ids)),
+            "training_windows": len(original_ids),
             "training_originals": int(pd.Series(original_ids).nunique()),
             "test_rows": int(probabilities.size),
             "experiment_config_fingerprint": experiment.fingerprint,

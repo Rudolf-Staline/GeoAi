@@ -226,5 +226,5 @@ def test_prior_shift_is_diagnostic_and_trust_sections_fit_limits(tmp_path: Path)
 
 def test_final_fit_requires_exact_test_id_order() -> None:
     _assert_test_order(np.asarray(["a", "b"]), np.asarray(["a", "b"]), "model")
-    with pytest.raises(FinalFitError, match="Test.csv ID order"):
+    with pytest.raises(FinalFitError, match=r"Test\.csv ID order"):
         _assert_test_order(np.asarray(["a", "b"]), np.asarray(["b", "a"]), "model")

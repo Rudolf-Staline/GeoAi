@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import json
-from importlib.metadata import PackageNotFoundError, version
 import subprocess
 import sys
+from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from typing import Any
 
@@ -147,7 +147,9 @@ def _select_calibration(
 ) -> tuple[CalibrationEvaluation, tuple[CalibrationEvaluation, ...]]:
     evaluations = tuple(
         crossfit_calibration(
-            weight_result.production.oof, project, method  # type: ignore[arg-type]
+            weight_result.production.oof,
+            project,
+            method,  # type: ignore[arg-type]
         )
         for method in methods
     )
@@ -169,9 +171,13 @@ def _select_calibration(
         )
     )
     # Simplicity wins unless calibration provides a predeclared material robust improvement.
-    selected = baseline if len(eligible) == 1 else max(
-        eligible,
-        key=lambda item: float(item.report.summary["robust_selection"]["score"]),
+    selected = (
+        baseline
+        if len(eligible) == 1
+        else max(
+            eligible,
+            key=lambda item: float(item.report.summary["robust_selection"]["score"]),
+        )
     )
     return selected, evaluations
 
@@ -184,7 +190,8 @@ def _prior_shift_em(probabilities: np.ndarray, source_prior: float) -> dict[str,
         raise FinalDeliveryError("source prior must lie in (0, 1)")
     estimate = float(np.mean(p))
     iterations = 0
-    for iterations in range(1, 101):
+    for iteration in range(1, 101):
+        iterations = iteration
         positive = p * (estimate / source_prior)
         negative = (1.0 - p) * ((1.0 - estimate) / (1.0 - source_prior))
         posterior = positive / np.maximum(positive + negative, 1e-12)
@@ -263,9 +270,13 @@ def _trustworthiness_text(
     counts = {name: _word_count(text) for name, text in sections.items()}
     if any(count > 100 for count in counts.values()):
         raise FinalDeliveryError(f"trustworthiness section exceeds 100 words: {counts}")
-    markdown = "# Trustworthiness Evaluation\n\n" + "\n\n".join(
-        f"## {name} ({counts[name]} words)\n\n{text}" for name, text in sections.items()
-    ) + "\n"
+    markdown = (
+        "# Trustworthiness Evaluation\n\n"
+        + "\n\n".join(
+            f"## {name} ({counts[name]} words)\n\n{text}" for name, text in sections.items()
+        )
+        + "\n"
+    )
     return markdown, counts
 
 
@@ -285,7 +296,7 @@ def _generate_notebook(project_root: Path) -> Path:
             "# GeoAI Aquaculture Pond Identification — Final Submission\n\n"
             "Place `Train.csv`, `Test.csv`, and `SampleSubmission.csv` in `data/raw/`, "
             "then install the validated extras with "
-            "`python -m pip install -e \".[dev,trees,deep,notebook]\"`. This notebook "
+            '`python -m pip install -e ".[dev,trees,deep,notebook]"`. This notebook '
             "only orchestrates tested project modules; it does not duplicate feature, "
             "validation, model, ensemble, calibration, or submission logic."
         ),

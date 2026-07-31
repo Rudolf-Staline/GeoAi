@@ -15,7 +15,7 @@ import pandas as pd
 from geoai_aquaculture.data import git_provenance, load_competition_data, load_project_config
 from geoai_aquaculture.submission import build_submission, validate_submission
 
-from .config import FinalDeliveryConfig, load_final_delivery_config
+from .config import FinalDeliveryConfig
 from .delivery_support import (
     FinalDeliveryError,
     _candidate_registry,
@@ -116,9 +116,7 @@ def build_final_delivery(
         project,
         config.calibration_methods,
     )
-    selected_calibration.oof.original.to_csv(
-        output / "selected_oof_predictions.csv", index=False
-    )
+    selected_calibration.oof.original.to_csv(output / "selected_oof_predictions.csv", index=False)
     selected_calibration.oof.windows.to_csv(
         output / "selected_window_oof_predictions.csv", index=False
     )
@@ -141,8 +139,7 @@ def build_final_delivery(
         raise FinalDeliveryError("final tree and temporal test rows do not align")
     tree_weight = weight_result.production.tree_weight
     raw_blend = (
-        tree_weight * tree_final.probabilities
-        + (1.0 - tree_weight) * temporal_final.probabilities
+        tree_weight * tree_final.probabilities + (1.0 - tree_weight) * temporal_final.probabilities
     )
     final_probability = selected_calibration.production_calibrator.transform(raw_blend)
     data = load_competition_data(project)
@@ -155,9 +152,7 @@ def build_final_delivery(
     submission_path = output / "submission.csv"
     submission.to_csv(submission_path, index=False, float_format="%.17g", lineterminator="\n")
 
-    disagreement = (
-        (tree_final.probabilities >= 0.5) != (temporal_final.probabilities >= 0.5)
-    )
+    disagreement = (tree_final.probabilities >= 0.5) != (temporal_final.probabilities >= 0.5)
     uncertainty = pd.DataFrame(
         {
             "ID": ids.astype(str).to_numpy(),
@@ -313,9 +308,7 @@ def build_final_delivery(
             "tree_weight": tree_weight,
             "temporal_weight": 1.0 - tree_weight,
             "calibration": selected_calibration.method,
-            "oof_combined_score": float(
-                selected_summary["official_metric"]["mean_combined_score"]
-            ),
+            "oof_combined_score": float(selected_summary["official_metric"]["mean_combined_score"]),
             "oof_robust_score": float(selected_summary["robust_selection"]["score"]),
         },
         "submission": {
@@ -328,9 +321,7 @@ def build_final_delivery(
         "candidate_registry_sha256": sha256_file(output / "candidate_registry.json"),
         "resolved_final_config_sha256": sha256_file(output / "resolved_final_config.json"),
         "selected_oof_sha256": sha256_file(output / "selected_oof_predictions.csv"),
-        "selected_window_oof_sha256": sha256_file(
-            output / "selected_window_oof_predictions.csv"
-        ),
+        "selected_window_oof_sha256": sha256_file(output / "selected_window_oof_predictions.csv"),
         "runtime_seconds": perf_counter() - started,
         "versions": _dependency_versions(),
     }
@@ -339,7 +330,7 @@ def build_final_delivery(
     (output / "reproducibility.md").write_text(
         "# Reproduction\n\n"
         "```bash\n"
-        "python -m pip install -e \".[dev,trees,deep,notebook]\"\n"
+        'python -m pip install -e ".[dev,trees,deep,notebook]"\n'
         "python scripts/build_submission.py --config configs/final.yaml\n"
         "python scripts/validate_submission.py --submission artifacts/final/submission.csv\n"
         "pytest\nruff check .\nruff format --check .\n"
