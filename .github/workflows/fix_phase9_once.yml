@@ -1,15 +1,16 @@
 name: Fix Phase 9 once
 
 on:
-  push:
+  pull_request:
     branches: [main]
-    paths: [.phase9-fix-trigger]
+    types: [synchronize]
 
 permissions:
   contents: write
 
 jobs:
   fix:
+    if: github.head_ref == 'phase9/oof-gating'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
