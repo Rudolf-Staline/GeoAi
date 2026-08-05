@@ -8,9 +8,10 @@ original from appearing in both gate training and evaluation.
 from __future__ import annotations
 
 import json
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -232,9 +233,7 @@ def build_gate_features(frame: pd.DataFrame) -> pd.DataFrame:
             "window_length_scaled": length / 6.0,
             "radar_fraction": frame["radar_months"].to_numpy(dtype=np.float64) / length,
             "optical_fraction": frame["optical_months"].to_numpy(dtype=np.float64) / length,
-            "optical_gap_fraction": frame["internal_optical_gap_count"].to_numpy(
-                dtype=np.float64
-            )
+            "optical_gap_fraction": frame["internal_optical_gap_count"].to_numpy(dtype=np.float64)
             / length,
             "window_start_sin": np.sin(angle),
             "window_start_cos": np.cos(angle),
@@ -247,16 +246,15 @@ def build_gate_features(frame: pd.DataFrame) -> pd.DataFrame:
 
 
 def _fit_gate(frame: pd.DataFrame, c_value: float) -> FittedGate:
-    disagreement = (
-        (frame["cat_probability"].to_numpy(dtype=np.float64) >= FIXED_THRESHOLD)
-        != (frame["invariant_probability"].to_numpy(dtype=np.float64) >= FIXED_THRESHOLD)
+    disagreement = (frame["cat_probability"].to_numpy(dtype=np.float64) >= FIXED_THRESHOLD) != (
+        frame["invariant_probability"].to_numpy(dtype=np.float64) >= FIXED_THRESHOLD
     )
     subset = frame.loc[disagreement].copy()
     if subset.empty:
         return FittedGate(None, 0.0, c_value, 0, 0, 0.0)
-    cat_label = (
-        subset["cat_probability"].to_numpy(dtype=np.float64) >= FIXED_THRESHOLD
-    ).astype(np.int8)
+    cat_label = (subset["cat_probability"].to_numpy(dtype=np.float64) >= FIXED_THRESHOLD).astype(
+        np.int8
+    )
     invariant_label = (
         subset["invariant_probability"].to_numpy(dtype=np.float64) >= FIXED_THRESHOLD
     ).astype(np.int8)
@@ -338,13 +336,13 @@ def _policy_probabilities(
     desired_label = cat_label.copy()
     desired_label[prefer_invariant] = invariant_label[prefer_invariant]
     probability = cat.copy()
-    groups: Iterable[tuple[Any, pd.DataFrame]]
+    group_positions: Iterable[np.ndarray]
     if "repeat" in frame.columns:
-        groups = frame.groupby("repeat", sort=False, observed=True)
+        group_positions = frame.groupby("repeat", sort=False, observed=True).indices.values()
     else:
-        groups = [(0, frame)]
-    for _, group in groups:
-        indices = group.index.to_numpy(dtype=np.int64)
+        group_positions = (np.arange(frame.shape[0], dtype=np.int64),)
+    for positions in group_positions:
+        indices = np.asarray(positions, dtype=np.int64)
         move_up = indices[(~cat_label[indices]) & desired_label[indices]]
         move_down = indices[cat_label[indices] & ~desired_label[indices]]
         if move_up.size:
@@ -402,9 +400,7 @@ def _window_frame(
     experiment_id: str,
     model_id: str,
 ) -> pd.DataFrame:
-    frame = aligned.drop(
-        columns=["cat_probability", "invariant_probability", "meta_fold"]
-    ).copy()
+    frame = aligned.drop(columns=["cat_probability", "invariant_probability", "meta_fold"]).copy()
     p = np.asarray(probability, dtype=np.float64)
     prediction = (p >= FIXED_THRESHOLD).astype(np.int8)
     frame["probability"] = p
@@ -508,9 +504,7 @@ def crossfit_gate(
     )
     boundary_report = evaluations["boundary"][1]
     boundary_robust = float(boundary_report.summary["robust_selection"]["score"])
-    boundary_combined = float(
-        boundary_report.summary["official_metric"]["mean_combined_score"]
-    )
+    boundary_combined = float(boundary_report.summary["official_metric"]["mean_combined_score"])
     accepted = (
         boundary_robust >= base_robust + minimum_robust_gain
         and boundary_combined >= base_combined - 0.0001
@@ -548,7 +542,7 @@ def crossfit_gate(
 
 
 def _json_default(value: object) -> object:
-    if isinstance(value, (np.integer, np.floating, np.bool_)):
+    if isinstance(value, np.integer | np.floating | np.bool_):
         return value.item()
     if isinstance(value, Path):
         return value.as_posix()

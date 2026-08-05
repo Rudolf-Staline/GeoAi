@@ -73,10 +73,7 @@ def main() -> int:
     print(f"Accepted: {result.accepted}")
     print(f"Decision: {result.acceptance_reason}")
     print(f"Production C: {result.production_c:.6g}")
-    print(
-        "Boundary OOF combined: "
-        f"{boundary['official_metric']['mean_combined_score']:.6f}"
-    )
+    print(f"Boundary OOF combined: {boundary['official_metric']['mean_combined_score']:.6f}")
     print(f"Boundary OOF robust: {boundary['robust_selection']['score']:.6f}")
     print(f"Report: {args.output_dir / 'gate_report.json'}")
     if result.accepted or args.allow_unaccepted:
