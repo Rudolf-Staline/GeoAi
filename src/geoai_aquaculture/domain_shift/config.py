@@ -134,7 +134,7 @@ def load_phase7_config(path: str | Path) -> Phase7Config:
     if not isinstance(model_raw, dict) or not isinstance(model_raw.get("parameters"), dict):
         raise DomainShiftConfigError("domain_model.parameters must be a mapping")
     clip_raw = config.get("importance_weight_clip")
-    if not isinstance(clip_raw, (list, tuple)) or len(clip_raw) != 2:
+    if not isinstance(clip_raw, list | tuple) or len(clip_raw) != 2:
         raise DomainShiftConfigError("importance_weight_clip must contain [minimum, maximum]")
     root = source.parents[2] if source.parent.name == "experiments" else source.parent
     payload = {

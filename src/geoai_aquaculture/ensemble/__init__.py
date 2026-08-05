@@ -1,4 +1,4 @@
-"""OOF ensembling, calibration, final fitting, and submission delivery."""
+"""OOF ensembling, calibration, gating, final fitting, and submission delivery."""
 
 from .calibration import (
     CalibrationError,
@@ -19,6 +19,16 @@ from .delivery import (
     build_final_delivery,
     ensure_final_oof_artifacts,
 )
+from .gating import (
+    META_FEATURES,
+    FittedGate,
+    GatingError,
+    GatingResult,
+    align_candidate_windows,
+    build_gate_features,
+    crossfit_gate,
+    run_gate_pipeline,
+)
 from .oof import (
     BlendEvaluation,
     FinalCandidate,
@@ -30,6 +40,7 @@ from .oof import (
 )
 
 __all__ = [
+    "META_FEATURES",
     "BlendEvaluation",
     "CalibrationError",
     "CalibrationEvaluation",
@@ -41,13 +52,20 @@ __all__ = [
     "FinalDeliveryResult",
     "FinalOOFError",
     "FittedCalibrator",
+    "FittedGate",
+    "GatingError",
+    "GatingResult",
     "WeightSelectionResult",
+    "align_candidate_windows",
     "build_final_delivery",
+    "build_gate_features",
     "crossfit_calibration",
+    "crossfit_gate",
     "ensure_final_oof_artifacts",
     "evaluate_fixed_blend",
     "expected_calibration_error",
     "learn_nested_weight",
     "load_final_candidates",
     "load_final_delivery_config",
+    "run_gate_pipeline",
 ]
